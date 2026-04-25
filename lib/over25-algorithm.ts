@@ -189,8 +189,9 @@ export async function processAllUpcomingPredictions() {
   const { data: upcomingMatches } = await supabase
     .from('fd_matches')
     .select('id')
-    .in('status', ['SCHEDULED', 'TIMED'])
-    .gte('utc_date', new Date().toISOString())
+    .in('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED'])
+    // Look at matches from the last 12 hours up to future matches
+    .gte('utc_date', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString())
     .order('utc_date', { ascending: true })
 
   if (!upcomingMatches) return

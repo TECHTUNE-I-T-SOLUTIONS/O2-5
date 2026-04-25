@@ -195,7 +195,8 @@ export async function getFdPredictions(limit?: number) {
         competition:fd_competitions!competition_id(name)
       )
     `)
-    .gte('match.utc_date', new Date().toISOString())
+    // Broaden window to include matches from the last 24 hours (including live/finished)
+    .gte('match.utc_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .order('over_2_5_prob', { ascending: false })
 
   if (limit) {
@@ -204,5 +205,19 @@ export async function getFdPredictions(limit?: number) {
 
   const { data, error } = await query
   if (error) throw error
-  return data
+  
+  // Data Normalization: Ensure all numeric fields are actual numbers and serializable
+  return (data || []).map(pred => ({
+    id: Number(pred.id),
+    match_id: Number(pred.match_id),
+    over_2_5_prob: Number(pred.over_2_5_prob || 0),
+    under_2_5_prob: Number(pred.under_2_5_prob || 0),
+    predicted_over_2_5: !!pred.predicted_over_2_5,
+    home_clean_sheet_pct: Number(pred.home_clean_sheet_pct || 0),
+    home_scoring_pct: Number(pred.home_scoring_pct || 0),
+    h2h_avg_goals: Number(pred.h2h_avg_goals || 0),
+    avg_home_goals: Number(pred.avg_home_goals || 0),
+    avg_away_goals: Number(pred.avg_away_goals || 0),
+    match: pred.match
+  }))
 }
