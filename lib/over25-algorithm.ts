@@ -68,23 +68,52 @@ export async function calculateMatchPredictions(matchId: number): Promise<Predic
   const competitionId = match.competition_id
 
   // 1. Get Season Stats
-  const { data: homeStats } = await supabase.from('fd_standings').select('*').eq('team_id', homeTeamId).eq('competition_id', competitionId).eq('type', 'TOTAL').single()
-  const { data: awayStats } = await supabase.from('fd_standings').select('*').eq('team_id', awayTeamId).eq('competition_id', competitionId).eq('type', 'TOTAL').single()
+  // 1. Get Season Stats (Most recent)
+  const { data: homeStats } = await supabase
+    .from('fd_standings')
+    .select('*')
+    .eq('team_id', homeTeamId)
+    .eq('competition_id', competitionId)
+    .eq('type', 'TOTAL')
+    .order('season_year', { ascending: false })
+    .limit(1)
+    .single()
 
-  if (!homeStats || !awayStats) return null
+  const { data: awayStats } = await supabase
+    .from('fd_standings')
+    .select('*')
+    .eq('team_id', awayTeamId)
+    .eq('competition_id', competitionId)
+    .eq('type', 'TOTAL')
+    .order('season_year', { ascending: false })
+    .limit(1)
+    .single()
 
-  const homeAvgGoals = (homeStats.goals_for + homeStats.goals_against) / homeStats.played_games
-  const awayAvgGoals = (awayStats.goals_for + awayStats.goals_against) / awayStats.played_games
+  // Fallback Averages if standings are missing (common in cups/early season)
+  const homeAvgGoals = homeStats 
+    ? (homeStats.goals_for + homeStats.goals_against) / homeStats.played_games 
+    : 2.5 // Baseline fallback
+  const awayAvgGoals = awayStats 
+    ? (awayStats.goals_for + awayStats.goals_against) / awayStats.played_games 
+    : 2.5
 
   // 2. Get Last 3 Matches Stats
   const homeLast3 = await getTeamLastMatches(homeTeamId, 3)
   const awayLast3 = await getTeamLastMatches(awayTeamId, 3)
 
-  const homeLast3Goals = homeLast3.reduce((acc, m) => acc + (m.home_team_id === homeTeamId ? (m.score_fulltime_home || 0) : (m.score_fulltime_away || 0)), 0)
-  const homeLast3Conceded = homeLast3.reduce((acc, m) => acc + (m.home_team_id === homeTeamId ? (m.score_fulltime_away || 0) : (m.score_fulltime_home || 0)), 0)
+  const homeLast3Goals = homeLast3.length > 0 
+    ? homeLast3.reduce((acc, m) => acc + (m.home_team_id === homeTeamId ? (m.score_fulltime_home || 0) : (m.score_fulltime_away || 0)), 0) / homeLast3.length * 3
+    : 0
+  const homeLast3Conceded = homeLast3.length > 0 
+    ? homeLast3.reduce((acc, m) => acc + (m.home_team_id === homeTeamId ? (m.score_fulltime_away || 0) : (m.score_fulltime_home || 0)), 0) / homeLast3.length * 3
+    : 0
   
-  const awayLast3Goals = awayLast3.reduce((acc, m) => acc + (m.home_team_id === awayTeamId ? (m.score_fulltime_home || 0) : (m.score_fulltime_away || 0)), 0)
-  const awayLast3Conceded = awayLast3.reduce((acc, m) => acc + (m.home_team_id === awayTeamId ? (m.score_fulltime_away || 0) : (m.score_fulltime_home || 0)), 0)
+  const awayLast3Goals = awayLast3.length > 0 
+    ? awayLast3.reduce((acc, m) => acc + (m.home_team_id === awayTeamId ? (m.score_fulltime_home || 0) : (m.score_fulltime_away || 0)), 0) / awayLast3.length * 3
+    : 0
+  const awayLast3Conceded = awayLast3.length > 0 
+    ? awayLast3.reduce((acc, m) => acc + (m.home_team_id === awayTeamId ? (m.score_fulltime_away || 0) : (m.score_fulltime_home || 0)), 0) / awayLast3.length * 3
+    : 0
 
   // 3. Home Stats (Clean Sheet & Scoring)
   const homePerformance = await calculateHomeStats(homeTeamId)
@@ -105,7 +134,13 @@ export async function calculateMatchPredictions(matchId: number): Promise<Predic
   // --- CALCULATION LOGIC ---
 
   // Base Logic (Poisson-like expected goals)
-  const expectedGoals = ((homeStats.goals_for / homeStats.played_games) + (awayStats.goals_against / awayStats.played_games) + (awayStats.goals_for / awayStats.played_games) + (homeStats.goals_against / homeStats.played_games)) / 2
+  // If we have standings, use them. If not, use fallback.
+  const hGF = homeStats ? (homeStats.goals_for / homeStats.played_games) : (homeLast3Goals / 3)
+  const hGA = homeStats ? (homeStats.goals_against / homeStats.played_games) : (homeLast3Conceded / 3)
+  const aGF = awayStats ? (awayStats.goals_for / awayStats.played_games) : (awayLast3Goals / 3)
+  const aGA = awayStats ? (awayStats.goals_against / awayStats.played_games) : (awayLast3Conceded / 3)
+
+  const expectedGoals = (hGF + aGA + aGF + hGA) / 2
   const weightedAvg = (expectedGoals * 0.7) + (h2hAvg * 0.3)
   
   let over25Base = (weightedAvg / 4.5) * 100
