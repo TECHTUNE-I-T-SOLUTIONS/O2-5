@@ -21,7 +21,27 @@ interface PredictionCardProps {
 }
 
 export default function PredictionCard({ prediction }: PredictionCardProps) {
-  const { match, over_2_5_prob, under_2_5_prob, predicted_over_2_5 } = prediction
+  // Deep scan for probability values to handle any potential naming or case-sensitivity issues
+  const getVal = (obj: any, ...keys: string[]) => {
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null) return obj[key]
+    }
+    // Fallback: scan all keys case-insensitively
+    const lowerKeys = Object.keys(obj).map(k => k.toLowerCase())
+    for (const search of keys) {
+      const foundIdx = lowerKeys.indexOf(search.toLowerCase())
+      if (foundIdx !== -1) return obj[Object.keys(obj)[foundIdx]]
+    }
+    return 0
+  }
+
+  const rawOver = getVal(prediction, 'over_2_5_prob', 'over_2_5_probability', 'probability')
+  const rawUnder = getVal(prediction, 'under_2_5_prob', 'under_2_5_probability', 'under_probability')
+  
+  const over25 = Math.round(parseFloat(rawOver.toString() || '0'))
+  const under25 = Math.round(parseFloat(rawUnder.toString() || '0'))
+  const isOver = prediction.predicted_over_2_5 ?? (over25 > under25)
+  const { match } = prediction
 
   return (
     <Card className="bg-card border-border overflow-hidden hover:border-accent transition-all duration-300 group">
@@ -68,16 +88,16 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
         <div className="space-y-4">
           {/* Over/Under Toggle-like Display */}
           <div className="grid grid-cols-2 gap-2">
-            <div className={`p-3 rounded-xl border transition-all ${predicted_over_2_5 ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+            <div className={`p-3 rounded-xl border transition-all ${isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
               <div className="flex flex-col items-center">
                 <span className="text-[9px] font-black uppercase mb-1">Over 2.5</span>
-                <span className={`text-lg font-black ${predicted_over_2_5 ? 'text-foreground' : 'text-muted-foreground'}`}>{over_2_5_prob}%</span>
+                <span className={`text-lg font-black ${isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{over25}%</span>
               </div>
             </div>
-            <div className={`p-3 rounded-xl border transition-all ${!predicted_over_2_5 ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+            <div className={`p-3 rounded-xl border transition-all ${!isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
               <div className="flex flex-col items-center">
                 <span className="text-[9px] font-black uppercase mb-1">Under 2.5</span>
-                <span className={`text-lg font-black ${!predicted_over_2_5 ? 'text-foreground' : 'text-muted-foreground'}`}>{under_2_5_prob}%</span>
+                <span className={`text-lg font-black ${!isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{under25}%</span>
               </div>
             </div>
           </div>
@@ -85,18 +105,26 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
           <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
             <div 
               className="bg-accent h-full transition-all duration-1000" 
-              style={{ width: `${predicted_over_2_5 ? over_2_5_prob : under_2_5_prob}%` }}
+              style={{ width: `${isOver ? over25 : under25}%` }}
             ></div>
           </div>
 
           <div className="flex justify-between items-center px-1">
             <div className="flex flex-col">
+              <span className="text-[8px] text-muted-foreground uppercase font-bold">Home GS%</span>
+              <span className="text-xs font-bold text-foreground">
+                {Math.round(parseFloat((prediction as any).home_scoring_pct || 0))}%
+              </span>
+            </div>
+            <div className="flex flex-col items-center">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">Home CS%</span>
-              <span className="text-xs font-bold text-foreground">{prediction.home_clean_sheet_pct?.toFixed(0)}%</span>
+              <span className="text-xs font-bold text-foreground">
+                {Math.round(parseFloat((prediction as any).home_clean_sheet_pct || 0))}%
+              </span>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">AI Verdict</span>
-              <span className="text-xs font-black text-accent uppercase">{predicted_over_2_5 ? 'OVER' : 'UNDER'} 2.5</span>
+              <span className="text-xs font-black text-accent uppercase">{isOver ? 'OVER' : 'UNDER'} 2.5</span>
             </div>
           </div>
 
