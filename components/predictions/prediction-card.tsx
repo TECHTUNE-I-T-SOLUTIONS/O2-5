@@ -38,8 +38,8 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
   const rawOver = getVal(prediction, 'over_2_5_prob', 'over_2_5_probability', 'probability')
   const rawUnder = getVal(prediction, 'under_2_5_prob', 'under_2_5_probability', 'under_probability')
   
-  const over25 = Math.round(parseFloat(rawOver.toString() || '0'))
-  const under25 = Math.round(parseFloat(rawUnder.toString() || '0'))
+  const over25 = Math.round(parseFloat(String(rawOver || '0')))
+  const under25 = Math.round(parseFloat(String(rawUnder || '0')))
   const isOver = prediction.predicted_over_2_5 ?? (over25 > under25)
   const { match } = prediction
 
