@@ -25,12 +25,12 @@ export default async function PredictionsPage() {
                   <div className="bg-card/50 border border-border rounded-lg p-4 text-xs space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Historical H2H Avg Goals:</span>
-                      <span className="font-bold text-foreground">{pred.h2h_avg_goals.toFixed(2)}</span>
+                      <span className="font-bold text-foreground">{(pred.h2h_avg_goals || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Probability Score:</span>
-                      <span className={`font-bold ${pred.probability > 70 ? 'text-green-500' : 'text-accent'}`}>
-                        {pred.probability}%
+                      <span className={`font-bold ${pred.over_2_5_prob > 70 ? 'text-green-500' : 'text-accent'}`}>
+                        {pred.over_2_5_prob}%
                       </span>
                     </div>
                   </div>
