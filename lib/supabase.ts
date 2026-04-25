@@ -168,6 +168,7 @@ export async function getFdMatches(limit?: number) {
       away_team:fd_teams!away_team_id(id, name, crest),
       competition:fd_competitions!competition_id(id, name, code)
     `)
+    .in('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED'])
     .gte('utc_date', new Date().toISOString())
     .order('utc_date', { ascending: true })
 

@@ -41,7 +41,11 @@ export async function GET(request: Request) {
     }
 
     if (status) {
-      query = query.eq('status', status)
+      if (status === 'SCHEDULED') {
+        query = query.in('status', ['SCHEDULED', 'TIMED'])
+      } else {
+        query = query.eq('status', status)
+      }
     }
 
     // Pagination (Cursor based)

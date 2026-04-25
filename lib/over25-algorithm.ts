@@ -154,9 +154,9 @@ export async function processAllUpcomingPredictions() {
   const { data: upcomingMatches } = await supabase
     .from('fd_matches')
     .select('id')
-    .eq('status', 'SCHEDULED')
+    .in('status', ['SCHEDULED', 'TIMED'])
     .gte('utc_date', new Date().toISOString())
-    .limit(200)
+    .order('utc_date', { ascending: true })
 
   if (!upcomingMatches) return
 
