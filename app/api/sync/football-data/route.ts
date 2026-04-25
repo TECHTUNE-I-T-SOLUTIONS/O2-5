@@ -14,8 +14,11 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 const TIER_1_COMPETITIONS = ['PL', 'ELC', 'BL1', 'SA', 'PD', 'FL1', 'DED', 'PPL', 'CL', 'WC']
 
-async function delay(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+// Strict delay to respect 10 calls/minute (60s / 10 = 6s per call)
+// We use 7 seconds for safety.
+async function apiDelay() {
+  console.log('[SYNC] Waiting 7 seconds to respect rate limits...')
+  return new Promise(resolve => setTimeout(resolve, 7000))
 }
 
 export async function POST() {
@@ -24,6 +27,8 @@ export async function POST() {
     
     // 1. Sync Competitions
     const competitionsData = await fetchCompetitions()
+    await apiDelay() // Delay after first call
+
     const filtered = competitionsData.filter((c: any) => TIER_1_COMPETITIONS.includes(c.code))
     
     const compRecords = filtered.map((c: any) => ({
@@ -42,10 +47,10 @@ export async function POST() {
     await supabase.from('fd_competitions').upsert(compRecords, { onConflict: 'id' })
 
     // 2. Sync Matches and Standings for all Tier 1 competitions
-    const compsToSync = filtered 
-    
-    for (const comp of compsToSync) {
-      // Matches
+    for (const comp of filtered) {
+      console.log(`[SYNC] Fetching matches for ${comp.name}...`)
+      
+      // CALL 1: Matches
       const matches = await fetchCompetitionMatches(comp.code)
       const teamRecords: any[] = []
       const matchRecords = matches.map((m: FdMatch) => {
@@ -91,7 +96,10 @@ export async function POST() {
       await supabase.from('fd_teams').upsert(uniqueTeams, { onConflict: 'id' })
       await supabase.from('fd_matches').upsert(matchRecords, { onConflict: 'id' })
 
-      // Standings
+      await apiDelay() // Delay after match fetch
+
+      // CALL 2: Standings
+      console.log(`[SYNC] Fetching standings for ${comp.name}...`)
       const standings = await fetchCompetitionStandings(comp.code)
       const standingRecords: any[] = []
       for (const table of standings) {
@@ -118,13 +126,14 @@ export async function POST() {
         await supabase.from('fd_standings').upsert(standingRecords, { onConflict: 'competition_id,season_year,team_id,type' })
       }
       
-      await delay(1000)
+      await apiDelay() // Delay after standings fetch
     }
 
     // 3. Run Algorithm
+    console.log('[ALGO] Starting probability engine...')
     await processAllUpcomingPredictions()
 
-    return NextResponse.json({ success: true, message: 'Sync and predictions completed for top leagues' })
+    return NextResponse.json({ success: true, message: 'Full sync and predictions completed successfully.' })
   } catch (error: any) {
     console.error('API Sync Error:', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
