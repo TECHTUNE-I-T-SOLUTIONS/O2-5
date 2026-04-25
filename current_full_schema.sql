@@ -1,0 +1,247 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.fixture_events (
+  id bigint NOT NULL DEFAULT nextval('fixture_events_id_seq'::regclass),
+  fixture_id bigint NOT NULL,
+  team_id bigint NOT NULL,
+  player_id bigint,
+  type text,
+  minute integer,
+  extra_minute integer,
+  detail text,
+  comments text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fixture_events_pkey PRIMARY KEY (id),
+  CONSTRAINT fixture_events_fixture_id_fkey FOREIGN KEY (fixture_id) REFERENCES public.fixtures(id),
+  CONSTRAINT fixture_events_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id),
+  CONSTRAINT fixture_events_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.players(id)
+);
+CREATE TABLE public.fixture_lineups (
+  id bigint NOT NULL DEFAULT nextval('fixture_lineups_id_seq'::regclass),
+  fixture_id bigint NOT NULL,
+  team_id bigint NOT NULL,
+  formation text,
+  coach_id bigint,
+  coach_name text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fixture_lineups_pkey PRIMARY KEY (id),
+  CONSTRAINT fixture_lineups_fixture_id_fkey FOREIGN KEY (fixture_id) REFERENCES public.fixtures(id),
+  CONSTRAINT fixture_lineups_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id)
+);
+CREATE TABLE public.fixture_statistics (
+  id bigint NOT NULL DEFAULT nextval('fixture_statistics_id_seq'::regclass),
+  fixture_id bigint NOT NULL,
+  team_id bigint NOT NULL,
+  shots_on_goal integer,
+  shots_off_goal integer,
+  shots_blocked integer,
+  shots_inside_box integer,
+  shots_outside_box integer,
+  fouls integer,
+  corner_kicks integer,
+  offsides integer,
+  ball_possession integer,
+  yellow_cards integer,
+  red_cards integer,
+  goalkeeper_saves integer,
+  passes integer,
+  passes_accurate integer,
+  passes_percent integer,
+  tackles integer,
+  blocks integer,
+  interceptions integer,
+  dribbles integer,
+  dribbles_successful integer,
+  dribbles_past integer,
+  duels integer,
+  duels_won integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fixture_statistics_pkey PRIMARY KEY (id),
+  CONSTRAINT fixture_statistics_fixture_id_fkey FOREIGN KEY (fixture_id) REFERENCES public.fixtures(id),
+  CONSTRAINT fixture_statistics_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id)
+);
+CREATE TABLE public.fixtures (
+  id bigint NOT NULL,
+  league_id bigint NOT NULL,
+  season integer NOT NULL,
+  fixture_date timestamp without time zone NOT NULL,
+  round text,
+  status text,
+  status_short text,
+  status_elapsed integer,
+  home_team_id bigint NOT NULL,
+  away_team_id bigint NOT NULL,
+  home_goals integer,
+  away_goals integer,
+  home_goals_halftime integer,
+  away_goals_halftime integer,
+  home_goals_extra integer,
+  away_goals_extra integer,
+  home_goals_penalty integer,
+  away_goals_penalty integer,
+  venue_id bigint,
+  venue_name text,
+  venue_city text,
+  referee text,
+  referee_country text,
+  extra_time integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fixtures_pkey PRIMARY KEY (id),
+  CONSTRAINT fixtures_league_id_fkey FOREIGN KEY (league_id) REFERENCES public.leagues(id),
+  CONSTRAINT fixtures_home_team_id_fkey FOREIGN KEY (home_team_id) REFERENCES public.teams(id),
+  CONSTRAINT fixtures_away_team_id_fkey FOREIGN KEY (away_team_id) REFERENCES public.teams(id)
+);
+CREATE TABLE public.leagues (
+  id bigint NOT NULL,
+  name text NOT NULL,
+  country text,
+  flag text,
+  logo text,
+  type text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  is_current boolean DEFAULT false,
+  CONSTRAINT leagues_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.lineup_players (
+  id bigint NOT NULL DEFAULT nextval('lineup_players_id_seq'::regclass),
+  lineup_id bigint NOT NULL DEFAULT nextval('lineup_players_lineup_id_seq'::regclass),
+  player_id bigint NOT NULL,
+  position text,
+  position_id integer,
+  number integer,
+  grid text,
+  is_substitute boolean DEFAULT false,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT lineup_players_pkey PRIMARY KEY (id),
+  CONSTRAINT lineup_players_lineup_id_fkey FOREIGN KEY (lineup_id) REFERENCES public.fixture_lineups(id),
+  CONSTRAINT lineup_players_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.players(id)
+);
+CREATE TABLE public.odds (
+  id bigint NOT NULL DEFAULT nextval('odds_id_seq'::regclass),
+  fixture_id bigint NOT NULL,
+  bookmaker text,
+  home_win_odds numeric,
+  draw_odds numeric,
+  away_win_odds numeric,
+  over_under_2_5 numeric,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT odds_pkey PRIMARY KEY (id),
+  CONSTRAINT odds_fixture_id_fkey FOREIGN KEY (fixture_id) REFERENCES public.fixtures(id)
+);
+CREATE TABLE public.players (
+  id bigint NOT NULL,
+  name text NOT NULL,
+  firstname text,
+  lastname text,
+  age integer,
+  birth_date date,
+  nationality text,
+  height integer,
+  weight integer,
+  photo text,
+  type text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT players_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.predictions (
+  id bigint NOT NULL DEFAULT nextval('predictions_id_seq'::regclass),
+  user_id text NOT NULL,
+  fixture_id bigint NOT NULL,
+  predicted_result text,
+  home_score integer,
+  away_score integer,
+  confidence integer DEFAULT 50,
+  won boolean,
+  points integer DEFAULT 0,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT predictions_pkey PRIMARY KEY (id),
+  CONSTRAINT predictions_fixture_id_fkey FOREIGN KEY (fixture_id) REFERENCES public.fixtures(id)
+);
+CREATE TABLE public.seasons (
+  id bigint NOT NULL,
+  league_id bigint NOT NULL,
+  year integer NOT NULL,
+  start_date date,
+  end_date date,
+  is_current boolean DEFAULT false,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT seasons_pkey PRIMARY KEY (id),
+  CONSTRAINT seasons_league_id_fkey FOREIGN KEY (league_id) REFERENCES public.leagues(id)
+);
+CREATE TABLE public.standings (
+  id bigint NOT NULL DEFAULT nextval('standings_id_seq'::regclass),
+  league_id bigint NOT NULL,
+  season integer NOT NULL,
+  team_id bigint NOT NULL,
+  rank integer,
+  rank_points integer,
+  group_name text,
+  played integer DEFAULT 0,
+  win integer DEFAULT 0,
+  draw integer DEFAULT 0,
+  lose integer DEFAULT 0,
+  goals_for integer DEFAULT 0,
+  goals_against integer DEFAULT 0,
+  goals_diff integer DEFAULT 0,
+  points integer DEFAULT 0,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT standings_pkey PRIMARY KEY (id),
+  CONSTRAINT standings_league_id_fkey FOREIGN KEY (league_id) REFERENCES public.leagues(id),
+  CONSTRAINT standings_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id)
+);
+CREATE TABLE public.sync_status (
+  id bigint NOT NULL DEFAULT nextval('sync_status_id_seq'::regclass),
+  endpoint text NOT NULL UNIQUE,
+  last_sync timestamp without time zone,
+  last_sync_date date,
+  status text,
+  total_records integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT sync_status_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.team_players (
+  id bigint NOT NULL DEFAULT nextval('team_players_id_seq'::regclass),
+  team_id bigint NOT NULL,
+  player_id bigint NOT NULL,
+  season integer NOT NULL,
+  position text,
+  number integer,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT team_players_pkey PRIMARY KEY (id),
+  CONSTRAINT team_players_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.teams(id),
+  CONSTRAINT team_players_player_id_fkey FOREIGN KEY (player_id) REFERENCES public.players(id)
+);
+CREATE TABLE public.teams (
+  id bigint NOT NULL,
+  name text NOT NULL,
+  code text,
+  country text,
+  founded integer,
+  national boolean DEFAULT false,
+  logo text,
+  venue_id bigint,
+  venue_name text,
+  venue_city text,
+  venue_capacity integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT teams_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.users (
+  id text NOT NULL,
+  email text UNIQUE,
+  username text UNIQUE,
+  avatar text,
+  total_predictions integer DEFAULT 0,
+  correct_predictions integer DEFAULT 0,
+  total_points integer DEFAULT 0,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+);
