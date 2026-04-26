@@ -185,7 +185,16 @@ export async function getFdPredictions(limit?: number) {
   let query = supabase
     .from('fd_predictions')
     .select(`
-      *,
+      id,
+      match_id,
+      avg_home_goals,
+      avg_away_goals,
+      h2h_avg_goals,
+      predicted_over_2_5,
+      over_2_5_prob,
+      under_2_5_prob,
+      home_clean_sheet_pct,
+      home_scoring_pct,
       match:match_id!inner(
         id,
         utc_date,
@@ -195,9 +204,10 @@ export async function getFdPredictions(limit?: number) {
         competition:fd_competitions!competition_id(name)
       )
     `)
-    // Broaden window to include matches from the last 24 hours (including live/finished)
+    // Filter by date and non-null probabilities
     .gte('match.utc_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-    .order('over_2_5_prob', { ascending: false })
+    .not('over_2_5_prob', 'is', null)
+    .order('over_2_5_prob', { ascending: false, nullsFirst: false })
 
   if (limit) {
     query = query.limit(limit)
@@ -207,17 +217,43 @@ export async function getFdPredictions(limit?: number) {
   if (error) throw error
   
   // Data Normalization: Ensure all numeric fields are actual numbers and serializable
-  return (data || []).map(pred => ({
-    id: Number(pred.id),
-    match_id: Number(pred.match_id),
-    over_2_5_prob: Number(pred.over_2_5_prob || 0),
-    under_2_5_prob: Number(pred.under_2_5_prob || 0),
-    predicted_over_2_5: !!pred.predicted_over_2_5,
-    home_clean_sheet_pct: Number(pred.home_clean_sheet_pct || 0),
-    home_scoring_pct: Number(pred.home_scoring_pct || 0),
-    h2h_avg_goals: Number(pred.h2h_avg_goals || 0),
-    avg_home_goals: Number(pred.avg_home_goals || 0),
-    avg_away_goals: Number(pred.avg_away_goals || 0),
-    match: pred.match
-  }))
+  return (data || []).map(pred => {
+    // Handle potential array wrapping from Supabase joins
+    const matchData = Array.isArray(pred.match) ? pred.match[0] : pred.match
+    if (!matchData) return null
+
+    // Determine probability values with multiple fallback strategies
+    const over25 = pred.over_2_5_prob ?? (pred as any).probability ?? 0
+    const under25 = pred.under_2_5_prob ?? (pred as any).under_probability ?? 0
+    
+    // Create a clean, plain object for Next.js serialization
+    return {
+      id: Number(pred.id),
+      match_id: Number(pred.match_id),
+      over_2_5_prob: Number(over25),
+      under_2_5_prob: Number(under25),
+      predicted_over_2_5: pred.predicted_over_2_5 !== undefined ? !!pred.predicted_over_2_5 : (Number(over25) > Number(under25)),
+      home_clean_sheet_pct: Number(pred.home_clean_sheet_pct ?? 0),
+      home_scoring_pct: Number(pred.home_scoring_pct ?? 0),
+      h2h_avg_goals: Number(pred.h2h_avg_goals ?? 0),
+      avg_home_goals: Number(pred.avg_home_goals ?? 0),
+      avg_away_goals: Number(pred.avg_away_goals ?? 0),
+      match: {
+        id: Number(matchData.id),
+        utc_date: String(matchData.utc_date),
+        status: String(matchData.status),
+        home_team: {
+          name: String(matchData.home_team?.name || 'Unknown'),
+          crest: String(matchData.home_team?.crest || '')
+        },
+        away_team: {
+          name: String(matchData.away_team?.name || 'Unknown'),
+          crest: String(matchData.away_team?.crest || '')
+        },
+        competition: {
+          name: String(matchData.competition?.name || 'Unknown')
+        }
+      }
+    }
+  }).filter(Boolean)
 }

@@ -1,6 +1,115 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.fd_competitions (
+  id bigint NOT NULL,
+  name text NOT NULL,
+  code text UNIQUE,
+  type text,
+  emblem text,
+  plan text,
+  area_name text,
+  area_code text,
+  area_flag text,
+  last_updated timestamp without time zone,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fd_competitions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.fd_matches (
+  id bigint NOT NULL,
+  competition_id bigint,
+  season_year integer,
+  utc_date timestamp without time zone NOT NULL,
+  status text,
+  matchday integer,
+  stage text,
+  group_name text,
+  last_updated timestamp without time zone,
+  home_team_id bigint,
+  away_team_id bigint,
+  score_fulltime_home integer,
+  score_fulltime_away integer,
+  score_halftime_home integer,
+  score_halftime_away integer,
+  score_extratime_home integer,
+  score_extratime_away integer,
+  score_penalties_home integer,
+  score_penalties_away integer,
+  winner text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fd_matches_pkey PRIMARY KEY (id),
+  CONSTRAINT fd_matches_competition_id_fkey FOREIGN KEY (competition_id) REFERENCES public.fd_competitions(id),
+  CONSTRAINT fd_matches_home_team_id_fkey FOREIGN KEY (home_team_id) REFERENCES public.fd_teams(id),
+  CONSTRAINT fd_matches_away_team_id_fkey FOREIGN KEY (away_team_id) REFERENCES public.fd_teams(id)
+);
+CREATE TABLE public.fd_predictions (
+  id bigint NOT NULL DEFAULT nextval('fd_predictions_id_seq'::regclass),
+  match_id bigint UNIQUE,
+  avg_home_goals numeric,
+  avg_away_goals numeric,
+  h2h_avg_goals numeric,
+  predicted_over_2_5 boolean,
+  is_correct boolean,
+  actual_goals integer,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  over_2_5_prob numeric,
+  under_2_5_prob numeric,
+  home_clean_sheet_pct numeric,
+  home_last_3_goals integer,
+  away_last_3_goals integer,
+  home_last_3_conceded integer,
+  away_last_3_conceded integer,
+  home_scoring_pct numeric,
+  CONSTRAINT fd_predictions_pkey PRIMARY KEY (id),
+  CONSTRAINT fd_predictions_match_id_fkey FOREIGN KEY (match_id) REFERENCES public.fd_matches(id)
+);
+CREATE TABLE public.fd_standings (
+  id bigint NOT NULL DEFAULT nextval('fd_standings_id_seq'::regclass),
+  competition_id bigint,
+  season_year integer,
+  type text,
+  stage text,
+  group_name text,
+  team_id bigint,
+  position integer,
+  played_games integer,
+  won integer,
+  draw integer,
+  lost integer,
+  points integer,
+  goals_for integer,
+  goals_against integer,
+  goals_difference integer,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fd_standings_pkey PRIMARY KEY (id),
+  CONSTRAINT fd_standings_competition_id_fkey FOREIGN KEY (competition_id) REFERENCES public.fd_competitions(id),
+  CONSTRAINT fd_standings_team_id_fkey FOREIGN KEY (team_id) REFERENCES public.fd_teams(id)
+);
+CREATE TABLE public.fd_sync_status (
+  id bigint NOT NULL DEFAULT nextval('fd_sync_status_id_seq'::regclass),
+  endpoint text UNIQUE,
+  last_sync timestamp without time zone,
+  status text,
+  total_records integer,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fd_sync_status_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.fd_teams (
+  id bigint NOT NULL,
+  name text NOT NULL,
+  short_name text,
+  tla text,
+  crest text,
+  address text,
+  website text,
+  founded integer,
+  club_colors text,
+  venue text,
+  last_updated timestamp without time zone,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fd_teams_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.fixture_events (
   id bigint NOT NULL DEFAULT nextval('fixture_events_id_seq'::regclass),
   fixture_id bigint NOT NULL,

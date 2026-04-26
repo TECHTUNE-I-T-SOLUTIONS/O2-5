@@ -21,25 +21,9 @@ interface PredictionCardProps {
 }
 
 export default function PredictionCard({ prediction }: PredictionCardProps) {
-  // Deep scan for probability values to handle any potential naming or case-sensitivity issues
-  const getVal = (obj: any, ...keys: string[]) => {
-    for (const key of keys) {
-      if (obj[key] !== undefined && obj[key] !== null) return obj[key]
-    }
-    // Fallback: scan all keys case-insensitively
-    const lowerKeys = Object.keys(obj).map(k => k.toLowerCase())
-    for (const search of keys) {
-      const foundIdx = lowerKeys.indexOf(search.toLowerCase())
-      if (foundIdx !== -1) return obj[Object.keys(obj)[foundIdx]]
-    }
-    return 0
-  }
-
-  const rawOver = getVal(prediction, 'over_2_5_prob', 'over_2_5_probability', 'probability')
-  const rawUnder = getVal(prediction, 'under_2_5_prob', 'under_2_5_probability', 'under_probability')
-  
-  const over25 = Math.round(parseFloat(String(rawOver || '0')))
-  const under25 = Math.round(parseFloat(String(rawUnder || '0')))
+  // Support both new schema (over_2_5_prob) and legacy schema (probability) for resilience
+  const over25 = prediction.over_2_5_prob ?? (prediction as any).probability ?? 0
+  const under25 = prediction.under_2_5_prob ?? (prediction as any).under_probability ?? 0
   const isOver = prediction.predicted_over_2_5 ?? (over25 > under25)
   const { match } = prediction
 
@@ -55,28 +39,28 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
           </span>
         </div>
       </div>
-      
+
       <div className="p-6">
         <div className="flex justify-between items-center mb-8 gap-4">
           <div className="flex flex-col items-center gap-3 flex-1">
             <div className="relative w-14 h-14 p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
-              <img 
-                src={match.home_team.crest} 
+              <img
+                src={match.home_team.crest}
                 alt={match.home_team.name}
                 className="w-full h-full object-contain"
               />
             </div>
             <span className="text-xs font-bold text-center line-clamp-1 h-8 flex items-center">{match.home_team.name}</span>
           </div>
-          
+
           <div className="flex flex-col items-center gap-1">
             <span className="text-[10px] font-black text-muted-foreground/30 italic">VS</span>
           </div>
-          
+
           <div className="flex flex-col items-center gap-3 flex-1">
             <div className="relative w-14 h-14 p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
-              <img 
-                src={match.away_team.crest} 
+              <img
+                src={match.away_team.crest}
                 alt={match.away_team.name}
                 className="w-full h-full object-contain"
               />
@@ -101,26 +85,18 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
-            <div 
-              className="bg-accent h-full transition-all duration-1000" 
+            <div
+              className="bg-accent h-full transition-all duration-1000"
               style={{ width: `${isOver ? over25 : under25}%` }}
             ></div>
           </div>
 
           <div className="flex justify-between items-center px-1">
             <div className="flex flex-col">
-              <span className="text-[8px] text-muted-foreground uppercase font-bold">Home GS%</span>
-              <span className="text-xs font-bold text-foreground">
-                {Math.round(parseFloat((prediction as any).home_scoring_pct || 0))}%
-              </span>
-            </div>
-            <div className="flex flex-col items-center">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">Home CS%</span>
-              <span className="text-xs font-bold text-foreground">
-                {Math.round(parseFloat((prediction as any).home_clean_sheet_pct || 0))}%
-              </span>
+              <span className="text-xs font-bold text-foreground">{prediction.home_clean_sheet_pct?.toFixed(0)}%</span>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">AI Verdict</span>
@@ -128,10 +104,10 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
             </div>
           </div>
 
-          <AIExplainer 
-            predictionId={prediction.id} 
-            homeTeam={match.home_team.name} 
-            awayTeam={match.away_team.name} 
+          <AIExplainer
+            predictionId={prediction.id}
+            homeTeam={match.home_team.name}
+            awayTeam={match.away_team.name}
           />
         </div>
       </div>
