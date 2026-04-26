@@ -181,7 +181,7 @@ export async function getFdMatches(limit?: number) {
   return data
 }
 
-export async function getFdPredictions(limit?: number) {
+export async function getFdPredictions(limit: number = 20, offset: number = 0) {
   let query = supabase
     .from('fd_predictions')
     .select(`
@@ -208,16 +208,13 @@ export async function getFdPredictions(limit?: number) {
     .gte('match.utc_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .not('over_2_5_prob', 'is', null)
     .order('utc_date', { foreignTable: 'match', ascending: true })
-
-  if (limit) {
-    query = query.limit(limit)
-  }
+    .range(offset, offset + limit - 1)
 
   const { data, error } = await query
   if (error) throw error
   
   // Data Normalization: Ensure all numeric fields are actual numbers and serializable
-  return (data || []).map(pred => {
+  const mappedData = (data || []).map(pred => {
     // Handle potential array wrapping from Supabase joins
     const matchData = Array.isArray(pred.match) ? pred.match[0] : pred.match
     if (!matchData) return null
@@ -256,4 +253,7 @@ export async function getFdPredictions(limit?: number) {
       }
     }
   }).filter(Boolean)
+
+  // Final sanitization to ensure data is perfectly plain for Next.js RSC serialization
+  return JSON.parse(JSON.stringify(mappedData))
 }

@@ -1,3 +1,6 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { format } from 'date-fns'
 import AIExplainer from '@/components/ai/ai-explainer'
@@ -21,6 +24,12 @@ interface PredictionCardProps {
 }
 
 export default function PredictionCard({ prediction }: PredictionCardProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   // Support both new schema (over_2_5_prob) and legacy schema (probability) for resilience
   const over25 = prediction.over_2_5_prob ?? (prediction as any).probability ?? 0
   const under25 = prediction.under_2_5_prob ?? (prediction as any).under_probability ?? 0
@@ -35,7 +44,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
             {match.competition.name}
           </span>
           <span className="text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full border border-border">
-            {format(new Date(match.utc_date), 'MMM d, HH:mm')}
+            {mounted ? format(new Date(match.utc_date), 'MMM d, HH:mm') : 'Loading...'}
           </span>
         </div>
       </div>
