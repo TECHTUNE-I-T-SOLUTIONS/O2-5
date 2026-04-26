@@ -207,7 +207,7 @@ export async function getFdPredictions(limit?: number) {
     // Filter by date and non-null probabilities
     .gte('match.utc_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
     .not('over_2_5_prob', 'is', null)
-    .order('over_2_5_prob', { ascending: false, nullsFirst: false })
+    .order('utc_date', { foreignTable: 'match', ascending: true })
 
   if (limit) {
     query = query.limit(limit)
