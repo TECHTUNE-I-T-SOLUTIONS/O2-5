@@ -33,8 +33,8 @@ export default function AdminSyncPage() {
                 <div>
                   <h3 className="font-bold text-foreground">AI Probability Engine</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    After syncing, the system will automatically run the Over/Under 2.5 algorithm 
-                    against all upcoming Tier 1 matches.
+                    After syncing, the system will automatically run all prediction algorithms 
+                    (Over/Under 2.5, Win/Draw, and Both Teams to Score) against all upcoming Tier 1 matches.
                   </p>
                 </div>
               </div>

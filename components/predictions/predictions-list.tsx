@@ -14,9 +14,10 @@ import { Search, Filter, ArrowUpDown, Loader2 } from 'lucide-react'
 
 interface PredictionsListProps {
   initialPredictions: any[]
+  predictionType?: 'OVER_2_5' | 'WIN_DRAW' | 'GG'
 }
 
-export default function PredictionsList({ initialPredictions }: PredictionsListProps) {
+export default function PredictionsList({ initialPredictions, predictionType = 'OVER_2_5' }: PredictionsListProps) {
   const [predictions, setPredictions] = useState(initialPredictions)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -34,7 +35,8 @@ export default function PredictionsList({ initialPredictions }: PredictionsListP
     
     setIsLoadingMore(true)
     try {
-      const res = await fetch(`/api/predictions?limit=20&offset=${offset}`)
+      const typeParam = predictionType ? `&type=${predictionType}` : ''
+      const res = await fetch(`/api/predictions?limit=20&offset=${offset}${typeParam}`)
       const newData = await res.json()
       
       if (newData && newData.length > 0) {
@@ -84,8 +86,16 @@ export default function PredictionsList({ initialPredictions }: PredictionsListP
 
     // Filter
     if (statusFilter !== 'all') {
-      const isOver = statusFilter === 'over'
-      result = result.filter(p => p.predicted_over_2_5 === isOver)
+      if (predictionType === 'OVER_2_5') {
+        const isOver = statusFilter === 'over'
+        result = result.filter(p => p.predicted_over_2_5 === isOver)
+      } else if (predictionType === 'WIN_DRAW') {
+        const isWinDraw = statusFilter === 'yes'
+        result = result.filter(p => p.predicted_win_draw === isWinDraw)
+      } else if (predictionType === 'GG') {
+        const isGG = statusFilter === 'yes'
+        result = result.filter(p => p.predicted_gg === isGG)
+      }
     }
 
     // Sort
@@ -97,10 +107,22 @@ export default function PredictionsList({ initialPredictions }: PredictionsListP
         return new Date(b.match.utc_date).getTime() - new Date(a.match.utc_date).getTime()
       }
       if (sortBy === 'prob_desc') {
-        return b.over_2_5_prob - a.over_2_5_prob
+        const probA = predictionType === 'OVER_2_5' ? a.over_2_5_prob : 
+                     predictionType === 'WIN_DRAW' ? a.win_draw_prob : 
+                     predictionType === 'GG' ? a.gg_prob : 0
+        const probB = predictionType === 'OVER_2_5' ? b.over_2_5_prob : 
+                     predictionType === 'WIN_DRAW' ? b.win_draw_prob : 
+                     predictionType === 'GG' ? b.gg_prob : 0
+        return probB - probA
       }
       if (sortBy === 'prob_asc') {
-        return a.over_2_5_prob - b.over_2_5_prob
+        const probA = predictionType === 'OVER_2_5' ? a.over_2_5_prob : 
+                     predictionType === 'WIN_DRAW' ? a.win_draw_prob : 
+                     predictionType === 'GG' ? a.gg_prob : 0
+        const probB = predictionType === 'OVER_2_5' ? b.over_2_5_prob : 
+                     predictionType === 'WIN_DRAW' ? b.win_draw_prob : 
+                     predictionType === 'GG' ? b.gg_prob : 0
+        return probA - probB
       }
       return 0
     })
@@ -130,8 +152,17 @@ export default function PredictionsList({ initialPredictions }: PredictionsListP
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Verdicts</SelectItem>
-              <SelectItem value="over">Over 2.5</SelectItem>
-              <SelectItem value="under">Under 2.5</SelectItem>
+              {predictionType === 'OVER_2_5' ? (
+                <>
+                  <SelectItem value="over">Over 2.5</SelectItem>
+                  <SelectItem value="under">Under 2.5</SelectItem>
+                </>
+              ) : (
+                <>
+                  <SelectItem value="yes">Yes</SelectItem>
+                  <SelectItem value="no">No</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
 
@@ -164,10 +195,23 @@ export default function PredictionsList({ initialPredictions }: PredictionsListP
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground font-medium uppercase tracking-wider">Probability</span>
-                    <span className={`font-black px-2 py-0.5 rounded-md ${pred.over_2_5_prob > 70 ? 'bg-green-500/10 text-green-500' : 'bg-accent/10 text-accent'}`}>
-                      {pred.over_2_5_prob}%
+                    <span className={`font-black px-2 py-0.5 rounded-md ${
+                      (predictionType === 'OVER_2_5' ? pred.over_2_5_prob : 
+                       predictionType === 'WIN_DRAW' ? pred.win_draw_prob : 
+                       predictionType === 'GG' ? pred.gg_prob : 0) > 70 
+                      ? 'bg-green-500/10 text-green-500' : 'bg-accent/10 text-accent'
+                    }`}>
+                      {predictionType === 'OVER_2_5' ? pred.over_2_5_prob : 
+                       predictionType === 'WIN_DRAW' ? pred.win_draw_prob : 
+                       predictionType === 'GG' ? pred.gg_prob : 0}%
                     </span>
                   </div>
+                  {pred.confidence_score > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground font-medium uppercase tracking-wider">AI Confidence</span>
+                      <span className="font-black text-foreground">{pred.confidence_score}%</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

@@ -160,6 +160,10 @@ export async function getLeagues() {
 }
 
 export async function getFdMatches(limit?: number) {
+  // Get today's date at midnight UTC to include all matches for the current day
+  const today = new Date()
+  today.setUTCHours(0, 0, 0, 0)
+  
   let query = supabase
     .from('fd_matches')
     .select(`
@@ -169,7 +173,7 @@ export async function getFdMatches(limit?: number) {
       competition:fd_competitions!competition_id(id, name, code)
     `)
     .in('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED'])
-    .gte('utc_date', new Date().toISOString())
+    .gte('utc_date', today.toISOString())
     .order('utc_date', { ascending: true })
 
   if (limit) {
@@ -178,23 +182,91 @@ export async function getFdMatches(limit?: number) {
 
   const { data, error } = await query
   if (error) throw error
+  
+  // If no matches from Football-Data, try to get from API-Football as fallback
+  if (!data || data.length === 0) {
+    console.log('[SUPABASE] No matches from Football-Data, trying API-Football fallback')
+    try {
+      const { fetchTodayFixtures } = await import('./api-football')
+      const apiFixtures = await fetchTodayFixtures()
+      
+      // Transform API-Football format to match our interface
+      const transformedMatches = apiFixtures.slice(0, limit || 20).map(f => ({
+        id: f.fixture.id,
+        utc_date: f.fixture.date,
+        status: f.fixture.status.short,
+        home_team_id: f.teams.home.id,
+        away_team_id: f.teams.away.id,
+        score_fulltime_home: f.score.fulltime.home,
+        score_fulltime_away: f.score.fulltime.away,
+        home_team: {
+          id: f.teams.home.id,
+          name: f.teams.home.name,
+          crest: f.teams.home.logo
+        },
+        away_team: {
+          id: f.teams.away.id,
+          name: f.teams.away.name,
+          crest: f.teams.away.logo
+        },
+        competition: {
+          id: f.league.id,
+          name: f.league.name,
+          code: f.league.name.substring(0, 3).toUpperCase()
+        }
+      }))
+      
+      return transformedMatches
+    } catch (apiError) {
+      console.warn('[SUPABASE] API-Football fallback failed:', apiError)
+      return []
+    }
+  }
+  
   return data
 }
 
-export async function getFdPredictions(limit: number = 20, offset: number = 0) {
+export async function getFdPredictions(limit: number = 20, offset: number = 0, predictionType?: string, date?: string) {
+  // Get the target date at midnight UTC (convert Nigerian time to UTC)
+  const targetDate = date ? new Date(date) : new Date()
+  // Convert Nigerian time (UTC+1) to UTC by subtracting 1 hour
+  targetDate.setUTCHours(targetDate.getUTCHours() - 1, 0, 0, 0)
+  
+  // Get the next day for filtering
+  const nextDay = new Date(targetDate)
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+  
   let query = supabase
     .from('fd_predictions')
     .select(`
       id,
       match_id,
+      prediction_type,
       avg_home_goals,
       avg_away_goals,
       h2h_avg_goals,
       predicted_over_2_5,
       over_2_5_prob,
       under_2_5_prob,
+      predicted_win_draw,
+      win_draw_prob,
+      predicted_gg,
+      gg_prob,
       home_clean_sheet_pct,
       home_scoring_pct,
+      home_form_strength,
+      away_form_strength,
+      defensive_strength,
+      league_position_home,
+      league_position_away,
+      home_record_last_3,
+      away_record_last_3,
+      criteria_met,
+      confidence_score,
+      analysis_explanation,
+      ai_explanation,
+      ai_enhanced_at,
+      ai_model_used,
       match:match_id!inner(
         id,
         utc_date,
@@ -204,11 +276,16 @@ export async function getFdPredictions(limit: number = 20, offset: number = 0) {
         competition:fd_competitions!competition_id(name)
       )
     `)
-    // Filter by date and non-null probabilities
-    .gte('match.utc_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-    .not('over_2_5_prob', 'is', null)
+    // Filter by date range (target date to next day)
+    .gte('match.utc_date', targetDate.toISOString())
+    .lt('match.utc_date', nextDay.toISOString())
     .order('utc_date', { foreignTable: 'match', ascending: true })
     .range(offset, offset + limit - 1)
+
+  // Filter by prediction type if specified
+  if (predictionType) {
+    query = query.eq('prediction_type', predictionType)
+  }
 
   const { data, error } = await query
   if (error) throw error
@@ -222,16 +299,36 @@ export async function getFdPredictions(limit: number = 20, offset: number = 0) {
     // Determine probability values with multiple fallback strategies
     const over25 = pred.over_2_5_prob ?? (pred as any).probability ?? 0
     const under25 = pred.under_2_5_prob ?? (pred as any).under_probability ?? 0
+    const winDraw = pred.win_draw_prob ?? 0
+    const gg = pred.gg_prob ?? 0
     
     // Create a clean, plain object for Next.js serialization
     return {
       id: Number(pred.id),
       match_id: Number(pred.match_id),
+      prediction_type: pred.prediction_type || 'OVER_2_5',
       over_2_5_prob: Number(over25),
       under_2_5_prob: Number(under25),
       predicted_over_2_5: pred.predicted_over_2_5 !== undefined ? !!pred.predicted_over_2_5 : (Number(over25) > Number(under25)),
+      win_draw_prob: Number(winDraw),
+      predicted_win_draw: pred.predicted_win_draw || false,
+      gg_prob: Number(gg),
+      predicted_gg: pred.predicted_gg || false,
       home_clean_sheet_pct: Number(pred.home_clean_sheet_pct ?? 0),
       home_scoring_pct: Number(pred.home_scoring_pct ?? 0),
+      home_form_strength: Number(pred.home_form_strength ?? 0),
+      away_form_strength: Number(pred.away_form_strength ?? 0),
+      defensive_strength: Number(pred.defensive_strength ?? 0),
+      league_position_home: Number(pred.league_position_home ?? 0),
+      league_position_away: Number(pred.league_position_away ?? 0),
+      home_record_last_3: pred.home_record_last_3 || '',
+      away_record_last_3: pred.away_record_last_3 || '',
+      criteria_met: pred.criteria_met || [],
+      confidence_score: Number(pred.confidence_score ?? 0),
+      analysis_explanation: pred.analysis_explanation || '',
+      ai_explanation: pred.ai_explanation || null,
+      ai_enhanced_at: pred.ai_enhanced_at || null,
+      ai_model_used: pred.ai_model_used || null,
       h2h_avg_goals: Number(pred.h2h_avg_goals ?? 0),
       avg_home_goals: Number(pred.avg_home_goals ?? 0),
       avg_away_goals: Number(pred.avg_away_goals ?? 0),

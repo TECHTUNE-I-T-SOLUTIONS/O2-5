@@ -39,6 +39,7 @@ export default function MatchesPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string>('')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [todayOnly, setTodayOnly] = useState(true)
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastMatchElementRef = useCallback((node: any) => {
@@ -61,6 +62,7 @@ export default function MatchesPage() {
         limit: '20',
         order: sortOrder,
         status: status,
+        today: todayOnly.toString(),
         ...(isMore && cursor ? { cursor: cursor.toString() } : {})
       })
 
@@ -90,7 +92,7 @@ export default function MatchesPage() {
 
   useEffect(() => {
     fetchMatches()
-  }, [status, sortOrder])
+  }, [status, sortOrder, todayOnly])
 
   const filteredMatches = matches.filter(m => 
     m.home_team.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -135,6 +137,7 @@ export default function MatchesPage() {
             <FilterButton active={status === 'SCHEDULED'} onClick={() => setStatus('SCHEDULED')} label="Upcoming" />
             <FilterButton active={status === 'FINISHED'} onClick={() => setStatus('FINISHED')} label="Finished" />
             <FilterButton active={status === 'IN_PLAY'} onClick={() => setStatus('IN_PLAY')} label="Live" />
+            <FilterButton active={todayOnly} onClick={() => setTodayOnly(!todayOnly)} label="Today Only" />
           </div>
           
           {loading ? (

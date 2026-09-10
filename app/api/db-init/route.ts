@@ -345,6 +345,10 @@ export async function POST(request: Request) {
       score_fulltime_away INTEGER,
       score_halftime_home INTEGER,
       score_halftime_away INTEGER,
+      score_extratime_home INTEGER,
+      score_extratime_away INTEGER,
+      score_penalties_home INTEGER,
+      score_penalties_away INTEGER,
       winner TEXT,
       last_updated TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -376,6 +380,7 @@ export async function POST(request: Request) {
     CREATE TABLE IF NOT EXISTS fd_predictions (
       id BIGSERIAL PRIMARY KEY,
       match_id BIGINT REFERENCES fd_matches(id),
+      prediction_type TEXT DEFAULT 'OVER_2_5',
       avg_home_goals numeric,
       avg_away_goals numeric,
       h2h_avg_goals numeric,
@@ -390,8 +395,36 @@ export async function POST(request: Request) {
       is_correct boolean,
       actual_goals integer,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(match_id)
+      UNIQUE(match_id, prediction_type)
     );
+
+    -- New columns for enhanced predictions
+    -- First drop old unique constraint if it exists
+    ALTER TABLE fd_predictions DROP CONSTRAINT IF EXISTS fd_predictions_match_id_key;
+    
+    ALTER TABLE fd_predictions 
+    ADD COLUMN IF NOT EXISTS prediction_type TEXT DEFAULT 'OVER_2_5',
+    ADD COLUMN IF NOT EXISTS predicted_win_draw boolean,
+    ADD COLUMN IF NOT EXISTS win_draw_prob numeric,
+    ADD COLUMN IF NOT EXISTS predicted_gg boolean,
+    ADD COLUMN IF NOT EXISTS gg_prob numeric,
+    ADD COLUMN IF NOT EXISTS top_scorers_available boolean,
+    ADD COLUMN IF NOT EXISTS best_assist_available boolean,
+    ADD COLUMN IF NOT EXISTS home_form_strength numeric,
+    ADD COLUMN IF NOT EXISTS away_form_strength numeric,
+    ADD COLUMN IF NOT EXISTS defensive_strength numeric,
+    ADD COLUMN IF NOT EXISTS league_position_home integer,
+    ADD COLUMN IF NOT EXISTS league_position_away integer,
+    ADD COLUMN IF NOT EXISTS home_record_last_3 TEXT,
+    ADD COLUMN IF NOT EXISTS away_record_last_3 TEXT,
+    ADD COLUMN IF NOT EXISTS home_form_string TEXT,
+    ADD COLUMN IF NOT EXISTS away_form_string TEXT,
+    ADD COLUMN IF NOT EXISTS criteria_met TEXT[],
+    ADD COLUMN IF NOT EXISTS confidence_score numeric,
+    ADD COLUMN IF NOT EXISTS analysis_explanation TEXT;
+    
+    -- Add new unique constraint
+    ALTER TABLE fd_predictions ADD CONSTRAINT fd_predictions_match_id_prediction_type_key UNIQUE (match_id, prediction_type);
     `
 
     // Execute the schema

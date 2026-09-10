@@ -186,34 +186,85 @@ export async function calculateMatchPredictions(matchId: number): Promise<Predic
 export async function processAllUpcomingPredictions() {
   console.log('[ALGO] Processing Over/Under 2.5 predictions...')
   
+  // Get current date in Nigerian time (UTC+1)
+  const now = new Date()
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000)
+  const nigeriaTime = new Date(utc + (3600000 * 1))
+  const today = new Date(nigeriaTime)
+  today.setUTCHours(0, 0, 0, 0)
+  
+  // Get end of today (midnight tomorrow)
+  const tomorrow = new Date(today)
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+  
   const { data: upcomingMatches } = await supabase
     .from('fd_matches')
-    .select('id')
-    .in('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED', 'FINISHED', 'AWARDED'])
-    // Look at matches from the last 24 hours to ensure today's matches are captured
-    .gte('utc_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .select('id, utc_date, home_team:fd_teams!home_team_id(name), away_team:fd_teams!away_team_id(name), competition:fd_competitions!competition_id(name)')
+    .in('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED'])
+    .gte('utc_date', today.toISOString())
+    .lt('utc_date', tomorrow.toISOString())
     .order('utc_date', { ascending: true })
 
-  if (!upcomingMatches) return
+  if (!upcomingMatches || upcomingMatches.length === 0) {
+    console.log('[ALGO] No upcoming matches found')
+    return
+  }
 
-  for (const m of upcomingMatches) {
-    const result = await calculateMatchPredictions(m.id)
-    if (result) {
-      await supabase.from('fd_predictions').upsert({
-        match_id: result.matchId,
-        avg_home_goals: result.avgHomeGoals,
-        avg_away_goals: result.avgAwayGoals,
-        h2h_avg_goals: result.h2hAvgGoals,
-        over_2_5_prob: result.over25Prob,
-        under_2_5_prob: result.under25Prob,
-        predicted_over_2_5: result.predictedOver25,
-        home_clean_sheet_pct: result.homeCleanSheetPct,
-        home_scoring_pct: result.homeScoringPct,
-        home_last_3_goals: result.homeLast3Goals,
-        away_last_3_goals: result.awayLast3Goals,
-        home_last_3_conceded: result.homeLast3Conceded,
-        away_last_3_conceded: result.awayLast3Conceded
-      }, { onConflict: 'match_id' })
+  // Get match IDs that already have OVER_2_5 predictions for today
+  const { data: existingPredictions } = await supabase
+    .from('fd_predictions')
+    .select('match_id')
+    .eq('prediction_type', 'OVER_2_5')
+    .in('match_id', upcomingMatches.map(m => m.id))
+
+  const existingMatchIds = new Set(existingPredictions?.map(p => p.match_id) || [])
+  const matchesToProcess = upcomingMatches.filter(m => !existingMatchIds.has(m.id))
+
+  console.log(`[ALGO] Processing ${matchesToProcess.length} new matches (skipping ${existingMatchIds.size} already processed)`)
+
+  let processedCount = 0
+  let failedCount = 0
+  
+  for (const m of matchesToProcess) {
+    try {
+      const result = await calculateMatchPredictions(m.id)
+      if (result) {
+        // Use algorithm's own analysis directly (no AI calls for speed)
+        const aiExplanation = result.analysisExplanation || 'Statistical analysis based on scoring patterns'
+        const aiConfidence = result.confidenceScore || 65
+        const aiKeyFactors = result.criteriaMet || ['Recent scoring patterns', 'Defensive statistics']
+
+        await supabase.from('fd_predictions').upsert({
+          match_id: result.matchId,
+          prediction_type: 'OVER_2_5',
+          avg_home_goals: result.avgHomeGoals,
+          avg_away_goals: result.avgAwayGoals,
+          h2h_avg_goals: result.h2hAvgGoals,
+          over_2_5_prob: result.over25Prob,
+          under_2_5_prob: result.under25Prob,
+          predicted_over_2_5: result.predictedOver25,
+          home_clean_sheet_pct: result.homeCleanSheetPct,
+          home_scoring_pct: result.homeScoringPct,
+          home_last_3_goals: result.homeLast3Goals,
+          away_last_3_goals: result.awayLast3Goals,
+          home_last_3_conceded: result.homeLast3Conceded,
+          away_last_3_conceded: result.awayLast3Conceded,
+          criteria_met: aiKeyFactors,
+          confidence_score: aiConfidence,
+          analysis_explanation: aiExplanation
+        }, { onConflict: 'match_id,prediction_type' })
+        
+        processedCount++
+        if (processedCount % 5 === 0) {
+          console.log(`[ALGO] Progress: ${processedCount}/${matchesToProcess.length} matches processed`)
+        }
+      }
+    } catch (error) {
+      console.error(`[ALGO] Failed to process match ${m.id}:`, error)
+      failedCount++
+      // Continue with next match
     }
   }
+  
+  console.log(`[ALGO] Completed: ${processedCount} successful, ${failedCount} failed`)
 }

@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { format } from 'date-fns'
-import AIExplainer from '@/components/ai/ai-explainer'
+import TestimonyForm from '@/components/testimonies/testimony-form'
 
 interface PredictionCardProps {
   prediction: {
     id: number
+    prediction_type?: string
     match: {
       utc_date: string
       home_team: { name: string; crest: string }
@@ -17,24 +18,88 @@ interface PredictionCardProps {
     over_2_5_prob: number
     under_2_5_prob: number
     predicted_over_2_5: boolean
+    win_draw_prob?: number
+    predicted_win_draw?: boolean
+    gg_prob?: number
+    predicted_gg?: boolean
     avg_home_goals: number
     avg_away_goals: number
     home_clean_sheet_pct?: number
+    confidence_score?: number
+    analysis_explanation?: string
+    criteria_met?: string[]
+    ai_explanation?: string
+    ai_enhanced_at?: string
   }
 }
 
 export default function PredictionCard({ prediction }: PredictionCardProps) {
   const [mounted, setMounted] = useState(false)
+  const [enhancing, setEnhancing] = useState(false)
+  const [aiExplanation, setAiExplanation] = useState<string | null>(prediction.ai_explanation || null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  const handleEnhanceWithAI = async () => {
+    setEnhancing(true)
+    try {
+      const response = await fetch('/api/predictions/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ predictionId: prediction.id })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setAiExplanation(data.aiExplanation)
+      }
+    } catch (error) {
+      console.error('Failed to enhance with AI:', error)
+    } finally {
+      setEnhancing(false)
+    }
+  }
+
+  const predictionType = prediction.prediction_type || 'OVER_2_5'
+  
   // Support both new schema (over_2_5_prob) and legacy schema (probability) for resilience
   const over25 = prediction.over_2_5_prob ?? (prediction as any).probability ?? 0
   const under25 = prediction.under_2_5_prob ?? (prediction as any).under_probability ?? 0
   const isOver = prediction.predicted_over_2_5 ?? (over25 > under25)
+  const winDraw = prediction.win_draw_prob ?? 0
+  const isWinDraw = prediction.predicted_win_draw ?? false
+  const gg = prediction.gg_prob ?? 0
+  const isGG = prediction.predicted_gg ?? false
   const { match } = prediction
+
+  const getPredictionDisplay = () => {
+    switch (predictionType) {
+      case 'WIN_DRAW':
+        return {
+          label: isWinDraw ? 'WIN/DRAW' : 'AWAY WIN',
+          probability: winDraw,
+          positive: isWinDraw,
+          color: isWinDraw ? 'text-green-500' : 'text-red-500'
+        }
+      case 'GG':
+        return {
+          label: isGG ? 'YES - GG' : 'NO - GG',
+          probability: gg,
+          positive: isGG,
+          color: isGG ? 'text-green-500' : 'text-red-500'
+        }
+      default: // OVER_2_5
+        return {
+          label: isOver ? 'OVER 2.5' : 'UNDER 2.5',
+          probability: isOver ? over25 : under25,
+          positive: isOver,
+          color: isOver ? 'text-green-500' : 'text-red-500'
+        }
+    }
+  }
+
+  const display = getPredictionDisplay()
 
   return (
     <Card className="bg-card border-border overflow-hidden hover:border-accent transition-all duration-300 group">
@@ -79,45 +144,100 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
         </div>
 
         <div className="space-y-4">
-          {/* Over/Under Toggle-like Display */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className={`p-3 rounded-xl border transition-all ${isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
-              <div className="flex flex-col items-center">
-                <span className="text-[9px] font-black uppercase mb-1">Over 2.5</span>
-                <span className={`text-lg font-black ${isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{over25}%</span>
+          {/* Prediction Display based on type */}
+          {predictionType === 'OVER_2_5' ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div className={`p-3 rounded-xl border transition-all ${isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-black uppercase mb-1">Over 2.5</span>
+                    <span className={`text-lg font-black ${isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{over25}%</span>
+                  </div>
+                </div>
+                <div className={`p-3 rounded-xl border transition-all ${!isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-black uppercase mb-1">Under 2.5</span>
+                    <span className={`text-lg font-black ${!isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{under25}%</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className={`p-3 rounded-xl border transition-all ${!isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
-              <div className="flex flex-col items-center">
-                <span className="text-[9px] font-black uppercase mb-1">Under 2.5</span>
-                <span className={`text-lg font-black ${!isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{under25}%</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
-            <div
-              className="bg-accent h-full transition-all duration-1000"
-              style={{ width: `${isOver ? over25 : under25}%` }}
-            ></div>
-          </div>
+              <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
+                <div
+                  className="bg-accent h-full transition-all duration-1000"
+                  style={{ width: `${isOver ? over25 : under25}%` }}
+                ></div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={`p-4 rounded-xl border transition-all ${display.positive ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] font-black uppercase mb-1">{predictionType === 'WIN_DRAW' ? 'Win/Draw' : 'Both Teams to Score'}</span>
+                  <span className={`text-2xl font-black ${display.color}`}>{display.probability}%</span>
+                  <span className={`text-xs font-bold mt-1 ${display.color}`}>{display.label}</span>
+                </div>
+              </div>
+
+              <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
+                <div
+                  className="bg-accent h-full transition-all duration-1000"
+                  style={{ width: `${display.probability}%` }}
+                ></div>
+              </div>
+            </>
+          )}
 
           <div className="flex justify-between items-center px-1">
             <div className="flex flex-col">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">Home CS%</span>
-              <span className="text-xs font-bold text-foreground">{prediction.home_clean_sheet_pct?.toFixed(0)}%</span>
+              <span className="text-xs font-bold text-foreground">
+                {prediction.home_clean_sheet_pct !== null && prediction.home_clean_sheet_pct !== undefined 
+                  ? `${prediction.home_clean_sheet_pct.toFixed(0)}%` 
+                  : 'N/A'}
+              </span>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-[8px] text-muted-foreground uppercase font-bold">AI Verdict</span>
-              <span className="text-xs font-black text-accent uppercase">{isOver ? 'OVER' : 'UNDER'} 2.5</span>
+              <span className={`text-xs font-black uppercase ${display.color}`}>{display.label}</span>
             </div>
           </div>
 
-          <AIExplainer
+          {/* Show AI explanation if available, otherwise show algorithm explanation */}
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-3 text-[10px]">
+            <p className="text-muted-foreground">
+              {aiExplanation || prediction.analysis_explanation || 'No explanation available'}
+            </p>
+            {aiExplanation && (
+              <span className="text-[8px] text-accent font-bold mt-1 block">✨ AI Enhanced</span>
+            )}
+          </div>
+
+          {/* Enhance with AI button */}
+          {!aiExplanation && (
+            <button
+              onClick={handleEnhanceWithAI}
+              disabled={enhancing}
+              className="w-full py-2 px-3 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl text-[10px] font-bold text-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {enhancing ? '✨ Enhancing...' : '✨ Enhance with AI'}
+            </button>
+          )}
+
+          {/* Testimony Form */}
+          <TestimonyForm 
+            predictionId={prediction.id} 
+            onTestimonySubmitted={() => {
+              // Optional: refresh prediction data to show updated testimony count
+            }}
+          />
+
+          {/* Temporarily disabled AIExplainer to fix rendering issues */}
+          {/* <AIExplainer
             predictionId={prediction.id}
             homeTeam={match.home_team.name}
             awayTeam={match.away_team.name}
-          />
+          /> */}
         </div>
       </div>
     </Card>

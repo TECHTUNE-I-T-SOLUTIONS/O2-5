@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const order = searchParams.get('order') || 'asc'
   const cursor = searchParams.get('cursor')
   const limit = parseInt(searchParams.get('limit') || '20')
+  const todayOnly = searchParams.get('today') === 'true'
 
   try {
     let query = supabase
@@ -24,6 +25,16 @@ export async function GET(request: Request) {
         away_team:fd_teams!away_team_id(id, name, crest),
         competition:fd_competitions!competition_id(id, name, code)
       `)
+
+    // Filter for today's matches if requested
+    if (todayOnly) {
+      const today = new Date()
+      today.setUTCHours(0, 0, 0, 0)
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      
+      query = query.gte('utc_date', today.toISOString()).lt('utc_date', tomorrow.toISOString())
+    }
 
     // Filters
     if (search) {

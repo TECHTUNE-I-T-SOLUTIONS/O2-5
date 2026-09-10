@@ -4,36 +4,30 @@ import { Header } from '@/components/header'
 import { Footer } from '@/components/footer'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import MatchCard from '@/components/matches/match-card'
-import LeaderboardCard from '@/components/leaderboard/leaderboard-card'
 import PredictionCard from '@/components/predictions/prediction-card'
-import { MatchCardSkeleton, LeaderboardCardSkeleton, EmptyState } from '@/components/skeleton-loader'
-import { getFixtures, getLeaderboard, getFdPredictions, getFdMatches } from '@/lib/supabase'
+import RecentTestimonies from '@/components/testimonies/recent-testimonies'
+import { getFdPredictions, getFdMatches } from '@/lib/supabase'
+import { RefreshCw } from 'lucide-react'
+import SyncButton from '@/components/sync/sync-button'
 
 async function getUpcomingMatches() {
   try {
-    // Get from both APIs
-    const [afMatches, fdMatches] = await Promise.all([
-      getFixtures('NS', 3),
-      getFdMatches(3)
-    ])
+    // Get today's matches from Football-Data API
+    const fdMatches = await getFdMatches(6)
     
-    // Combine and format for display (MatchCard expects API-Football format or we adapt it)
-    // For now, let's just count them for the stats
     return {
-      af: afMatches || [],
       fd: fdMatches || [],
-      total: (afMatches?.length || 0) + (fdMatches?.length || 0)
+      total: fdMatches?.length || 0
     }
   } catch (error) {
     console.error('Error fetching matches:', error)
-    return { af: [], fd: [], total: 0 }
+    return { fd: [], total: 0 }
   }
 }
 
 async function getOver25Predictions() {
   try {
-    const predictions = await getFdPredictions(6)
+    const predictions = await getFdPredictions(6, 0, 'OVER_2_5')
     return predictions || []
   } catch (error) {
     console.error('Error fetching predictions:', error)
@@ -41,25 +35,38 @@ async function getOver25Predictions() {
   }
 }
 
-async function getTopPredictors() {
+async function getSyncStatus() {
   try {
-    const leaderboard = await getLeaderboard(5)
-    return leaderboard || []
+    // Get current date in Nigerian time (UTC+1)
+    const now = new Date()
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000)
+    const nigeriaTime = new Date(utc + (3600000 * 1))
+    const nigeriaDate = nigeriaTime.toISOString().split('T')[0]
+    
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/sync/status?date=${nigeriaDate}`)
+    const data = await res.json()
+    return data.syncStatus || null
   } catch (error) {
-    console.error('Error fetching leaderboard:', error)
-    return []
+    console.error('Error fetching sync status:', error)
+    return null
   }
 }
 
-export default async function Home() {
-  const [matchData, leaderboard, over25Predictions] = await Promise.all([
-    getUpcomingMatches(),
-    getTopPredictors(),
-    getOver25Predictions()
-  ])
+async function getTopPredictors() {
+  return [] // No longer using leaderboard
+}
 
-  const totalPredictions = leaderboard.reduce((sum: number, entry: any) => sum + (entry.predictions || 0), 0)
-  const leaguesCount = matchData.af.length > 0 ? new Set(matchData.af.map((m: any) => m.league?.id)).size : 0
+export default async function Home() {
+  const [matchData, over25Predictions, syncStatus] = await Promise.all([
+    getUpcomingMatches(),
+    getOver25Predictions(),
+    getSyncStatus()
+  ])
+  
+  // Check if all prediction types are completed for today
+  const completedTypes = syncStatus?.prediction_types_generated || []
+  const allTypes = ['OVER_2_5', 'WIN_DRAW', 'GG']
+  const isSyncComplete = allTypes.every(type => completedTypes.includes(type))
 
   return (
     <>
@@ -75,11 +82,11 @@ export default async function Home() {
 
         {/* Stats Section */}
         <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             <Card className="bg-card border-border p-6">
-              <p className="text-sm text-muted-foreground mb-2">Upcoming Matches</p>
+              <p className="text-sm text-muted-foreground mb-2">Today's Matches</p>
               <p className="text-3xl font-bold text-foreground mb-1">{matchData.total}</p>
-              <p className="text-xs text-muted-foreground">Across all synced APIs</p>
+              <p className="text-xs text-muted-foreground">From Tier 1 leagues</p>
             </Card>
             <Card className="bg-card border-border p-6">
               <p className="text-sm text-muted-foreground mb-2">Algorithm Predictions</p>
@@ -87,14 +94,9 @@ export default async function Home() {
               <p className="text-xs text-muted-foreground">Over 2.5 Goals ready</p>
             </Card>
             <Card className="bg-card border-border p-6">
-              <p className="text-sm text-muted-foreground mb-2">Total Predictions</p>
-              <p className="text-3xl font-bold text-foreground mb-1">{totalPredictions}</p>
-              <p className="text-xs text-muted-foreground">By community</p>
-            </Card>
-            <Card className="bg-card border-border p-6">
-              <p className="text-sm text-muted-foreground mb-2">Leaderboard Users</p>
-              <p className="text-3xl font-bold text-foreground mb-1">{leaderboard.length}</p>
-              <p className="text-xs text-muted-foreground">Active predictors</p>
+              <p className="text-sm text-muted-foreground mb-2">System Status</p>
+              <p className="text-3xl font-bold text-foreground mb-1">{isSyncComplete ? '✓ Ready' : 'Syncing'}</p>
+              <p className="text-xs text-muted-foreground">Daily predictions</p>
             </Card>
           </div>
         </div>
@@ -109,34 +111,69 @@ export default async function Home() {
               <h2 className="text-2xl font-bold text-accent">AI Over 2.5 Predictions</h2>
               <p className="text-muted-foreground">High confidence picks from our algorithm</p>
             </div>
-            <Link href="/predictions">
-              <Button variant="ghost" className="text-accent">
-                All Predictions →
-              </Button>
-            </Link>
+            <div className="flex items-center gap-4">
+              <SyncButton isSyncComplete={isSyncComplete} />
+              <Link href="/predictions">
+                <Button variant="ghost" className="text-accent">
+                  All Predictions →
+                </Button>
+              </Link>
+            </div>
           </div>
 
           <Suspense fallback={<LoadingMatchCards />}>
             {over25Predictions && over25Predictions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {over25Predictions.map((pred: any) => (
+                {over25Predictions.slice(0, 6).map((pred: any) => (
                   <PredictionCard key={pred.id} prediction={pred} />
                 ))}
               </div>
             ) : (
               <EmptyState 
                 title="No algorithm predictions"
-                description="Click the 'Update Predictions Now' button above to sync data and generate picks."
+                description="Click the 'Run All Predictions' button above to sync data and generate picks."
               />
             )}
           </Suspense>
+        </section>
+
+        {/* Win/Draw and GG Predictions Preview */}
+        <section className="mb-16">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">More Prediction Types</h2>
+              <p className="text-muted-foreground">Win/Draw and Both Teams to Score analysis</p>
+            </div>
+            <Link href="/predictions">
+              <Button variant="ghost" className="text-accent">
+                View All Types →
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="p-6 bg-card border-border">
+              <h3 className="text-lg font-bold mb-2 text-accent">Win/Draw Predictions</h3>
+              <p className="text-sm text-muted-foreground mb-4">Based on team form, league position, and defensive strength.</p>
+              <Link href="/predictions">
+                <Button variant="outline" className="w-full">View Win/Draw</Button>
+              </Link>
+            </Card>
+            <Card className="p-6 bg-card border-border">
+              <h3 className="text-lg font-bold mb-2 text-accent">Both Teams to Score</h3>
+              <p className="text-sm text-muted-foreground mb-4">Matches where both teams are likely to score based on offensive form.</p>
+              <Link href="/predictions">
+                <Button variant="outline" className="w-full">View GG Predictions</Button>
+              </Link>
+            </Card>
+          </div>
         </section>
 
         {/* Upcoming Matches (Football-Data) */}
         <section className="mb-16">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold">Upcoming Matches</h2>
+              <h2 className="text-2xl font-bold">Today's Matches</h2>
               <p className="text-muted-foreground">Matches from Tier 1 Leagues</p>
             </div>
             <Link href="/matches">
@@ -169,33 +206,22 @@ export default async function Home() {
           </Suspense>
         </section>
 
-        {/* Leaderboard Section */}
+        {/* Recent Testimonies Section */}
         <section className="mb-16">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl font-bold">Community Leaderboard</h2>
-              <p className="text-muted-foreground">See how your manual predictions compare</p>
+              <h2 className="text-2xl font-bold">Recent Testimonies</h2>
+              <p className="text-muted-foreground">Community feedback on prediction outcomes</p>
             </div>
-            <Link href="/leaderboard">
+            <Link href="/testimonies">
               <Button variant="ghost" className="text-accent">
-                Full Leaderboard →
+                View All →
               </Button>
             </Link>
           </div>
 
-          <Suspense fallback={<LoadingLeaderboard />}>
-            {leaderboard && leaderboard.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {leaderboard.map((entry: any, index: number) => (
-                  <LeaderboardCard key={entry.userId || index} entry={entry} rank={index + 1} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState 
-                title="No predictors yet"
-                description="Make a manual prediction on any match to join the leaderboard!"
-              />
-            )}
+          <Suspense fallback={<div className="py-8 text-center text-muted-foreground">Loading testimonies...</div>}>
+            <RecentTestimonies />
           </Suspense>
         </section>
         </div>
@@ -209,17 +235,12 @@ function LoadingMatchCards() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <MatchCardSkeleton key={i} />
-      ))}
-    </div>
-  )
-}
-
-function LoadingLeaderboard() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <LeaderboardCardSkeleton key={i} />
+        <Card key={i} className="p-4 bg-card border-border animate-pulse">
+          <div className="flex items-center justify-between">
+            <div className="h-4 bg-muted rounded w-20" />
+            <div className="h-4 bg-muted rounded w-16" />
+          </div>
+        </Card>
       ))}
     </div>
   )

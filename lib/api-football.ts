@@ -32,19 +32,20 @@ export interface ApiFixture {
     flag: string | null
     season: number
     round: string
+    standings: boolean
   }
   teams: {
     home: {
       id: number
       name: string
       logo: string
-      update: string
+      winner: boolean | null
     }
     away: {
       id: number
       name: string
       logo: string
-      update: string
+      winner: boolean | null
     }
   }
   goals: {
@@ -111,7 +112,79 @@ export interface ApiLeague {
     start: string
     end: string
     current: boolean
+    coverage: {
+      fixtures: {
+        events: boolean
+        lineups: boolean
+        statistics_fixtures: boolean
+        statistics_players: boolean
+      }
+      standings: boolean
+      players: boolean
+      top_scorers: boolean
+      top_assists: boolean
+      top_cards: boolean
+      injuries: boolean
+      predictions: boolean
+      odds: boolean
+    }
   }[]
+}
+
+export interface ApiStandings {
+  league: {
+    id: number
+    name: string
+    country: string
+    logo: string
+    flag: string | null
+    season: number
+    standings: Array<{
+      rank: number
+      team: {
+        id: number
+        name: string
+        logo: string
+      }
+      points: number
+      goalsDiff: number
+      group: string
+      form: string
+      status: string
+      description: string | null
+      all: {
+        played: number
+        win: number
+        draw: number
+        lose: number
+        goals: {
+          for: number
+          against: number
+        }
+      }
+      home: {
+        played: number
+        win: number
+        draw: number
+        lose: number
+        goals: {
+          for: number
+          against: number
+        }
+      }
+      away: {
+        played: number
+        win: number
+        draw: number
+        lose: number
+        goals: {
+          for: number
+          against: number
+        }
+      }
+      update: string
+    }>
+  }
 }
 
 // Fetch with proper headers for API-SPORTS
@@ -272,7 +345,7 @@ export async function fetchCurrentLeagues() {
 export async function fetchLeagueStandings(leagueId: number, season: number) {
   try {
     const data = await apiRequest(`/standings?league=${leagueId}&season=${season}`)
-    return data.response
+    return data.response[0] as ApiStandings // API returns array with single league standings
   } catch (error) {
     console.error('Error fetching standings:', error)
     throw error
@@ -325,6 +398,17 @@ export async function getApiStatus() {
     return data.response
   } catch (error) {
     console.error('Error fetching API status:', error)
+    throw error
+  }
+}
+
+export async function fetchTodayFixtures() {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const data = await apiRequest(`/fixtures?date=${today}`)
+    return data.response as ApiFixture[]
+  } catch (error) {
+    console.error('Error fetching today fixtures:', error)
     throw error
   }
 }

@@ -49,10 +49,10 @@ export function Header() {
             Predictions
           </Link>
           <Link
-            href="/leaderboard"
+            href="/testimonies"
             className="rounded-md px-3 py-2 text-sm font-medium text-foreground transition hover:bg-secondary hover:text-foreground"
           >
-            Leaderboard
+            Testimonies
           </Link>
         </div>
 
