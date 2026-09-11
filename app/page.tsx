@@ -9,7 +9,7 @@ import RecentTestimonies from '@/components/testimonies/recent-testimonies'
 import { getFdPredictions, getFdMatches } from '@/lib/supabase'
 import SyncButton from '@/components/sync/sync-button'
 import { EmptyState } from '@/components/skeleton-loader'
-
+// all's good
 
 async function getUpcomingMatches() {
   try {
