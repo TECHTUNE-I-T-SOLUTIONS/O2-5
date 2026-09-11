@@ -7,6 +7,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 interface WinDrawResult {
   matchId: number
   predictedWinDraw: boolean
+  predictedWinner: 'HOME' | 'AWAY' | 'DRAW' | null
   winDrawProb: number
   homeFormStrength: number
   awayFormStrength: number
@@ -285,14 +286,38 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
 
   const predictedWinDraw = winDrawProb > 55
 
-  // Generate explanation
+  // Determine specific winner prediction
+  let predictedWinner: 'HOME' | 'AWAY' | 'DRAW' | null = null
+  
+  if (predictedWinDraw) {
+    // Predict which team is more likely to win or if it's a draw
+    const homeAdvantage = positionAdvantage + formAdvantage
+    
+    if (homeAdvantage > 15) {
+      predictedWinner = 'HOME'
+    } else if (homeAdvantage < -15) {
+      predictedWinner = 'AWAY'
+    } else {
+      predictedWinner = 'DRAW'
+    }
+  }
+
+  // Generate explanation with specific team prediction
+  const homeTeamName = (match.home_team as { name?: string })?.name || 'Home team'
+  const awayTeamName = (match.away_team as { name?: string })?.name || 'Away team'
+  
+  const teamPrediction = predictedWinner 
+    ? (predictedWinner === 'HOME' ? `${homeTeamName} predicted to win` : predictedWinner === 'AWAY' ? `${awayTeamName} predicted to win` : 'Draw predicted')
+    : `${awayTeamName} win predicted`
+    
   const analysisExplanation = criteriaMet.length > 0 
-    ? `Analysis based on ${criteriaMet.length} criteria: ${criteriaMet.join(', ')}. Form: Home (${homeFormString || 'N/A'}), Away (${awayFormString || 'N/A'}). Confidence score: ${confidenceScore}/100.`
-    : 'Limited data available for prediction.'
+    ? `${teamPrediction}. Analysis based on ${criteriaMet.length} criteria: ${criteriaMet.join(', ')}. Form: Home (${homeFormString || 'N/A'}), Away (${awayFormString || 'N/A'}). Confidence score: ${confidenceScore}/100.`
+    : `Limited data available for prediction. ${teamPrediction}.`
 
   return {
     matchId,
     predictedWinDraw,
+    predictedWinner,
     winDrawProb: Math.round(winDrawProb),
     homeFormStrength: Math.round(homeFormStrength),
     awayFormStrength: Math.round(awayFormStrength),
@@ -362,6 +387,7 @@ export async function processAllWinDrawPredictions() {
           match_id: result.matchId,
           prediction_type: 'WIN_DRAW',
           predicted_win_draw: result.predictedWinDraw,
+          predicted_winner: result.predictedWinner,
           win_draw_prob: result.winDrawProb,
           home_form_strength: result.homeFormStrength,
           away_form_strength: result.awayFormStrength,

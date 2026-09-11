@@ -20,6 +20,7 @@ interface PredictionCardProps {
     predicted_over_2_5: boolean
     win_draw_prob?: number
     predicted_win_draw?: boolean
+    predicted_winner?: 'HOME' | 'AWAY' | 'DRAW' | null
     gg_prob?: number
     predicted_gg?: boolean
     avg_home_goals: number
@@ -76,8 +77,19 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
   const getPredictionDisplay = () => {
     switch (predictionType) {
       case 'WIN_DRAW':
+        // Determine specific team prediction
+        let winDrawLabel = isWinDraw ? 'WIN/DRAW' : 'AWAY WIN'
+        if (prediction.predicted_winner) {
+          if (prediction.predicted_winner === 'HOME') {
+            winDrawLabel = `${match.home_team.name} WIN/DRAW`
+          } else if (prediction.predicted_winner === 'AWAY') {
+            winDrawLabel = `${match.away_team.name} WIN/DRAW`
+          } else if (prediction.predicted_winner === 'DRAW') {
+            winDrawLabel = 'DRAW'
+          }
+        }
         return {
-          label: isWinDraw ? 'WIN/DRAW' : 'AWAY WIN',
+          label: winDrawLabel,
           probability: winDraw,
           positive: isWinDraw,
           color: isWinDraw ? 'text-green-500' : 'text-red-500'

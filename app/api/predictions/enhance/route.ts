@@ -51,14 +51,21 @@ export async function POST(request: Request) {
       .single()
 
     const matchData = {
-      home_team: homeTeam?.name || 'Unknown',
-      away_team: awayTeam?.name || 'Unknown',
-      competition: 'Football',
+      home_team: { name: homeTeam?.name || 'Unknown' },
+      away_team: { name: awayTeam?.name || 'Unknown' },
+      competition: { name: 'Football' },
       utc_date: match.utc_date,
       prediction_type: prediction.prediction_type,
       algorithm_explanation: prediction.analysis_explanation,
       confidence_score: prediction.confidence_score,
-      criteria_met: prediction.criteria_met
+      criteria_met: prediction.criteria_met,
+      league_position_home: prediction.league_position_home,
+      league_position_away: prediction.league_position_away,
+      home_form_strength: prediction.home_form_strength,
+      away_form_strength: prediction.away_form_strength,
+      defensive_strength: prediction.defensive_strength,
+      home_record_last_3: prediction.home_record_last_3,
+      away_record_last_3: prediction.away_record_last_3
     }
 
     // Generate AI explanation

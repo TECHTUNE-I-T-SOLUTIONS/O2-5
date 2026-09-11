@@ -267,6 +267,7 @@ export async function getFdPredictions(limit: number = 20, offset: number = 0, p
       ai_explanation,
       ai_enhanced_at,
       ai_model_used,
+      predicted_winner,
       match:match_id!inner(
         id,
         utc_date,
@@ -329,6 +330,7 @@ export async function getFdPredictions(limit: number = 20, offset: number = 0, p
       ai_explanation: pred.ai_explanation || null,
       ai_enhanced_at: pred.ai_enhanced_at || null,
       ai_model_used: pred.ai_model_used || null,
+      predicted_winner: pred.predicted_winner || null,
       h2h_avg_goals: Number(pred.h2h_avg_goals ?? 0),
       avg_home_goals: Number(pred.avg_home_goals ?? 0),
       avg_away_goals: Number(pred.avg_away_goals ?? 0),

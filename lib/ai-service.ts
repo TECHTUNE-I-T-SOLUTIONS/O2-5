@@ -35,7 +35,7 @@ export class FootballAIService {
     // Check if AI models are available
     if (MODEL_CHAIN.length === 0 || !this.isConfigured()) {
       console.log('[AI] No AI models available or not configured, using algorithm fallback')
-      return this.getFallbackAnalysis(predictionType)
+      return this.getFallbackAnalysis(predictionType, matchData)
     }
 
     const prompt = this.buildAnalysisPrompt(matchData, predictionType)
@@ -58,11 +58,16 @@ export class FootballAIService {
 
     // All models failed, return fallback
     console.error('[AI] All AI models failed, using fallback. Last error:', lastError?.message)
-    return this.getFallbackAnalysis(predictionType)
+    return this.getFallbackAnalysis(predictionType, matchData)
   }
 
   private buildAnalysisPrompt(matchData: any, predictionType: string): string {
-    const { home_team, away_team, competition, utc_date } = matchData
+    const { home_team, away_team, competition, utc_date, algorithm_explanation, confidence_score, criteria_met, league_position_home, league_position_away, home_form_strength, away_form_strength, defensive_strength, home_record_last_3, away_record_last_3 } = matchData
+    
+    // Handle both string and object formats for team names
+    const homeTeamName = typeof home_team === 'string' ? home_team : home_team?.name || 'Unknown'
+    const awayTeamName = typeof away_team === 'string' ? away_team : away_team?.name || 'Unknown'
+    const competitionName = typeof competition === 'string' ? competition : competition?.name || 'Unknown'
     
     let criteriaContext = ''
     
@@ -98,11 +103,54 @@ Criteria for (GG) both teams to score:
         break
     }
 
+    // Build statistical context if available
+    let statisticalContext = ''
+    if (league_position_home || league_position_away) {
+      statisticalContext += `
+League Positions:
+- Home Team: Position ${league_position_home || 'N/A'}
+- Away Team: Position ${league_position_away || 'N/A'}
+`
+    }
+    
+    if (home_form_strength || away_form_strength) {
+      statisticalContext += `
+Form Strength (0-10):
+- Home Team: ${home_form_strength || 'N/A'}
+- Away Team: ${away_form_strength || 'N/A'}
+`
+    }
+    
+    if (defensive_strength) {
+      statisticalContext += `
+Defensive Strength: ${defensive_strength || 'N/A'}/100
+`
+    }
+    
+    if (home_record_last_3 || away_record_last_3) {
+      statisticalContext += `
+Recent Form (Last 3 matches):
+- Home Team: ${home_record_last_3 || 'N/A'}
+- Away Team: ${away_record_last_3 || 'N/A'}
+`
+    }
+    
+    if (criteria_met && criteria_met.length > 0) {
+      statisticalContext += `
+Criteria Met: ${criteria_met.join(', ')}
+`
+    }
+
     return `You are a football prediction analyst for the O2-5 Prediction Platform. 
 
-Match: ${home_team.name} vs ${away_team.name}
-Competition: ${competition.name}
+Match: ${homeTeamName} vs ${awayTeamName}
+Competition: ${competitionName}
 Date: ${utc_date}
+
+${statisticalContext}
+
+Algorithm Analysis: ${algorithm_explanation || 'No algorithm analysis available'}
+Algorithm Confidence: ${confidence_score || 'N/A'}%
 
 ${criteriaContext}
 
@@ -156,10 +204,31 @@ Confidence: [number]`
     }
   }
 
-  private getFallbackAnalysis(predictionType: string): AIAnalysisResult {
+  private getFallbackAnalysis(predictionType: string, matchData?: any): AIAnalysisResult {
+    let winDrawMessage = 'Analysis based on league positioning and recent form. Consider home advantage and head-to-head records.'
+    
+    if (predictionType === 'WIN_DRAW' && matchData) {
+      const homeTeam = typeof matchData?.home_team === 'string' ? matchData.home_team : matchData?.home_team?.name || 'Home team'
+      const awayTeam = typeof matchData?.away_team === 'string' ? matchData.away_team : matchData?.away_team?.name || 'Away team'
+      const homePos = matchData?.league_position_home
+      const awayPos = matchData?.league_position_away
+      
+      if (homePos && awayPos) {
+        if (homePos < awayPos) {
+          winDrawMessage = `${homeTeam} has better league position (${homePos} vs ${awayPos}) and recent form suggests they are more likely to win or draw.`
+        } else if (awayPos < homePos) {
+          winDrawMessage = `${awayTeam} has better league position (${awayPos} vs ${homePos}) and recent form suggests they are more likely to win or draw.`
+        } else {
+          winDrawMessage = `Both ${homeTeam} and ${awayTeam} have similar league positions (${homePos}), making this a competitive match likely to end in a draw or close result.`
+        }
+      } else {
+        winDrawMessage = `Analysis for ${homeTeam} vs ${awayTeam} based on available data. Consider home advantage and recent form patterns.`
+      }
+    }
+    
     const fallbackMessages = {
       'OVER_2_5': 'Analysis based on recent scoring patterns and defensive statistics. Both teams show offensive potential based on historical data.',
-      'WIN_DRAW': 'Analysis based on league positioning and recent form. Consider home advantage and head-to-head records.',
+      'WIN_DRAW': winDrawMessage,
       'GG': 'Analysis based on both teams\' scoring records and defensive vulnerabilities. Recent form suggests both teams may find the net.'
     }
 
