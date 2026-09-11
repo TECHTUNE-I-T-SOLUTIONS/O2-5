@@ -131,22 +131,22 @@ export default function PredictionsList({ initialPredictions, predictionType = '
   }, [predictions, searchTerm, statusFilter, sortBy])
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row gap-4 bg-card p-4 rounded-2xl border border-border sticky top-20 z-10 shadow-sm backdrop-blur-md bg-card/90">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:gap-4 bg-card p-3 sm:p-4 rounded-2xl border border-border sticky top-16 sm:top-20 z-10 shadow-sm backdrop-blur-md bg-card/90">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search teams or leagues..." 
-            className="pl-10 bg-muted/50 border-none"
+            className="pl-10 bg-muted/50 border-none text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] bg-muted/50 border-none">
+            <SelectTrigger className="w-full sm:w-[140px] bg-muted/50 border-none text-sm">
               <Filter className="mr-2 h-4 w-4 text-accent" />
               <SelectValue placeholder="Verdict" />
             </SelectTrigger>
@@ -167,7 +167,7 @@ export default function PredictionsList({ initialPredictions, predictionType = '
           </Select>
 
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[180px] bg-muted/50 border-none">
+            <SelectTrigger className="w-full sm:w-[180px] bg-muted/50 border-none text-sm">
               <ArrowUpDown className="mr-2 h-4 w-4 text-accent" />
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -184,11 +184,11 @@ export default function PredictionsList({ initialPredictions, predictionType = '
       {/* Grid */}
       {filteredAndSortedPredictions.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {filteredAndSortedPredictions.map((pred: any) => (
-              <div key={pred.id} className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div key={pred.id} className="flex flex-col gap-3 sm:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <PredictionCard prediction={pred} />
-                <div className="bg-card/30 border border-border/50 rounded-xl p-4 text-[10px] space-y-2 backdrop-blur-sm">
+                <div className="bg-card/30 border border-border/50 rounded-xl p-3 sm:p-4 text-[10px] space-y-2 backdrop-blur-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground font-medium uppercase tracking-wider">H2H Avg Goals</span>
                     <span className="font-black text-foreground">{(pred.h2h_avg_goals || 0).toFixed(2)}</span>
@@ -219,19 +219,19 @@ export default function PredictionsList({ initialPredictions, predictionType = '
 
           {/* Infinite Scroll Loader Trigger */}
           {hasMore && !searchTerm && (
-            <div ref={loaderRef} className="py-12 flex justify-center">
+            <div ref={loaderRef} className="py-8 sm:py-12 flex justify-center">
               {isLoadingMore && (
                 <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 text-accent animate-spin" />
-                  <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Loading more matches...</p>
+                  <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 text-accent animate-spin" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest">Loading more matches...</p>
                 </div>
               )}
             </div>
           )}
         </>
       ) : (
-        <div className="py-20 text-center">
-          <p className="text-muted-foreground">No matches match your filters.</p>
+        <div className="py-16 sm:py-20 text-center">
+          <p className="text-sm text-muted-foreground">No matches match your filters.</p>
         </div>
       )}
     </div>

@@ -103,22 +103,22 @@ export default function PredictionsPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-background py-12">
+      <main className="min-h-screen bg-background py-8 sm:py-12">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="mb-12 flex justify-between items-start">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 text-accent">Algorithm Predictions</h1>
-              <p className="text-muted-foreground">Advanced AI-powered predictions for multiple markets based on statistical analysis.</p>
-              <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{format(new Date(currentNigerianDate), 'EEEE, MMMM d, yyyy')} (Nigerian Time)</span>
+          <div className="mb-8 sm:mb-12 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 text-accent">Algorithm Predictions</h1>
+              <p className="text-sm text-muted-foreground">Advanced AI-powered predictions for multiple markets based on statistical analysis.</p>
+              <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm text-muted-foreground">
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="truncate">{format(new Date(currentNigerianDate), 'EEEE, MMMM d, yyyy')} (Nigerian Time)</span>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-3">
+            <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
               <Button 
                 onClick={generatePredictions}
                 disabled={loading || dataLoading || syncComplete}
-                className={`${syncComplete ? 'bg-green-600 hover:bg-green-700' : 'bg-accent text-accent-foreground hover:bg-accent/90'} min-w-[180px]`}
+                className={`${syncComplete ? 'bg-green-600 hover:bg-green-700' : 'bg-accent text-accent-foreground hover:bg-accent/90'} w-full sm:w-auto min-w-[140px] sm:min-w-[180px]`}
               >
                 {loading ? (
                   <>
@@ -137,52 +137,52 @@ export default function PredictionsPage() {
                 )}
               </Button>
               {message && (
-                <div className={`text-xs max-w-xs text-right px-3 py-2 rounded-lg ${
+                <div className={`text-[10px] sm:text-xs max-w-full sm:max-w-xs text-right px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg ${
                   message.startsWith('✓') 
                     ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
                     : message.startsWith('✗')
                     ? 'bg-red-500/10 text-red-500 border border-red-500/20'
                     : 'bg-accent/10 text-accent border border-accent/20'
                 }`}>
-                  {message}
+                  <span className="truncate block">{message}</span>
                 </div>
               )}
             </div>
           </div>
 
           {dataLoading ? (
-            <div className="py-20 text-center">
-              <RefreshCw className="h-8 w-8 text-accent animate-spin mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading predictions...</p>
+            <div className="py-16 sm:py-20 text-center">
+              <RefreshCw className="h-6 w-6 sm:h-8 sm:w-8 text-accent animate-spin mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground">Loading predictions...</p>
             </div>
           ) : (
             <Tabs defaultValue="over25" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-8">
-                <TabsTrigger value="over25">Over 2.5 Goals</TabsTrigger>
-                <TabsTrigger value="windraw">Win/Draw</TabsTrigger>
-                <TabsTrigger value="gg">Both Teams to Score</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8">
+                <TabsTrigger value="over25" className="text-xs sm:text-sm">Over 2.5 Goals</TabsTrigger>
+                <TabsTrigger value="windraw" className="text-xs sm:text-sm">Win/Draw</TabsTrigger>
+                <TabsTrigger value="gg" className="text-xs sm:text-sm">Both Teams to Score</TabsTrigger>
               </TabsList>
 
               <TabsContent value="over25">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold mb-2">Over 2.5 Goals Predictions</h2>
-                  <p className="text-muted-foreground">Matches with high probability of 3+ goals based on scoring patterns and defensive stats.</p>
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">Over 2.5 Goals Predictions</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Matches with high probability of 3+ goals based on scoring patterns and defensive stats.</p>
                 </div>
                 <PredictionsList initialPredictions={over25Predictions || []} predictionType="OVER_2_5" />
               </TabsContent>
 
               <TabsContent value="windraw">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold mb-2">Win/Draw Predictions</h2>
-                  <p className="text-muted-foreground">Predictions based on team form, league position, and defensive strength.</p>
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">Win/Draw Predictions</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Predictions based on team form, league position, and defensive strength.</p>
                 </div>
                 <PredictionsList initialPredictions={winDrawPredictions || []} predictionType="WIN_DRAW" />
               </TabsContent>
 
               <TabsContent value="gg">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold mb-2">Both Teams to Score (GG)</h2>
-                  <p className="text-muted-foreground">Matches where both teams are likely to score based on offensive and defensive form.</p>
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-2">Both Teams to Score (GG)</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Matches where both teams are likely to score based on offensive and defensive form.</p>
                 </div>
                 <PredictionsList initialPredictions={ggPredictions || []} predictionType="GG" />
               </TabsContent>

@@ -79,7 +79,7 @@ async function triggerPredictions() {
       .gte('utc_date', today.toISOString())
       .lt('utc_date', tomorrow.toISOString())
     
-    const hasTodayData = matchCount > 0
+    const hasTodayData = (matchCount || 0) > 0
     
     if (!hasTodayData) {
       console.log('[CRON] No matches found for today, skipping predictions')

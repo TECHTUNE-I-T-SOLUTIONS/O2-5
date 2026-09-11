@@ -103,66 +103,66 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
 
   return (
     <Card className="bg-card border-border overflow-hidden hover:border-accent transition-all duration-300 group">
-      <div className="p-4 border-b border-border bg-muted/50 group-hover:bg-accent/5 transition-colors">
+      <div className="p-3 sm:p-4 border-b border-border bg-muted/50 group-hover:bg-accent/5 transition-colors">
         <div className="flex justify-between items-center">
-          <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">
+          <span className="text-[8px] sm:text-[10px] font-black text-accent uppercase tracking-[0.2em] truncate">
             {match.competition.name}
           </span>
-          <span className="text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full border border-border">
+          <span className="text-[8px] sm:text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full border border-border whitespace-nowrap">
             {mounted ? format(new Date(match.utc_date), 'MMM d, HH:mm') : 'Loading...'}
           </span>
         </div>
       </div>
 
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-8 gap-4">
-          <div className="flex flex-col items-center gap-3 flex-1">
-            <div className="relative w-14 h-14 p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
+      <div className="p-4 sm:p-6">
+        <div className="flex justify-between items-center mb-6 sm:mb-8 gap-2 sm:gap-4">
+          <div className="flex flex-col items-center gap-2 sm:gap-3 flex-1">
+            <div className="relative w-10 h-10 sm:w-14 sm:h-14 p-1.5 sm:p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
               <img
                 src={match.home_team.crest}
                 alt={match.home_team.name}
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className="text-xs font-bold text-center line-clamp-1 h-8 flex items-center">{match.home_team.name}</span>
+            <span className="text-[10px] sm:text-xs font-bold text-center line-clamp-1 h-6 sm:h-8 flex items-center">{match.home_team.name}</span>
           </div>
 
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] font-black text-muted-foreground/30 italic">VS</span>
+            <span className="text-[8px] sm:text-[10px] font-black text-muted-foreground/30 italic">VS</span>
           </div>
 
-          <div className="flex flex-col items-center gap-3 flex-1">
-            <div className="relative w-14 h-14 p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
+          <div className="flex flex-col items-center gap-2 sm:gap-3 flex-1">
+            <div className="relative w-10 h-10 sm:w-14 sm:h-14 p-1.5 sm:p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
               <img
                 src={match.away_team.crest}
                 alt={match.away_team.name}
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className="text-xs font-bold text-center line-clamp-1 h-8 flex items-center">{match.away_team.name}</span>
+            <span className="text-[10px] sm:text-xs font-bold text-center line-clamp-1 h-6 sm:h-8 flex items-center">{match.away_team.name}</span>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Prediction Display based on type */}
           {predictionType === 'OVER_2_5' ? (
             <>
               <div className="grid grid-cols-2 gap-2">
-                <div className={`p-3 rounded-xl border transition-all ${isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+                <div className={`p-2 sm:p-3 rounded-xl border transition-all ${isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
                   <div className="flex flex-col items-center">
-                    <span className="text-[9px] font-black uppercase mb-1">Over 2.5</span>
-                    <span className={`text-lg font-black ${isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{over25}%</span>
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase mb-1">Over 2.5</span>
+                    <span className={`text-sm sm:text-lg font-black ${isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{over25}%</span>
                   </div>
                 </div>
-                <div className={`p-3 rounded-xl border transition-all ${!isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+                <div className={`p-2 sm:p-3 rounded-xl border transition-all ${!isOver ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
                   <div className="flex flex-col items-center">
-                    <span className="text-[9px] font-black uppercase mb-1">Under 2.5</span>
-                    <span className={`text-lg font-black ${!isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{under25}%</span>
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase mb-1">Under 2.5</span>
+                    <span className={`text-sm sm:text-lg font-black ${!isOver ? 'text-foreground' : 'text-muted-foreground'}`}>{under25}%</span>
                   </div>
                 </div>
               </div>
 
-              <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
+              <div className="w-full bg-muted/50 rounded-full h-1.5 sm:h-2 overflow-hidden border border-border/50">
                 <div
                   className="bg-accent h-full transition-all duration-1000"
                   style={{ width: `${isOver ? over25 : under25}%` }}
@@ -171,15 +171,15 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
             </>
           ) : (
             <>
-              <div className={`p-4 rounded-xl border transition-all ${display.positive ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
+              <div className={`p-3 sm:p-4 rounded-xl border transition-all ${display.positive ? 'bg-accent/10 border-accent/40 shadow-inner' : 'bg-background border-border opacity-60'}`}>
                 <div className="flex flex-col items-center">
-                  <span className="text-[9px] font-black uppercase mb-1">{predictionType === 'WIN_DRAW' ? 'Win/Draw' : 'Both Teams to Score'}</span>
-                  <span className={`text-2xl font-black ${display.color}`}>{display.probability}%</span>
-                  <span className={`text-xs font-bold mt-1 ${display.color}`}>{display.label}</span>
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase mb-1">{predictionType === 'WIN_DRAW' ? 'Win/Draw' : 'Both Teams to Score'}</span>
+                  <span className={`text-xl sm:text-2xl font-black ${display.color}`}>{display.probability}%</span>
+                  <span className={`text-xs sm:text-sm font-bold mt-1 ${display.color}`}>{display.label}</span>
                 </div>
               </div>
 
-              <div className="w-full bg-muted/50 rounded-full h-2 overflow-hidden border border-border/50">
+              <div className="w-full bg-muted/50 rounded-full h-1.5 sm:h-2 overflow-hidden border border-border/50">
                 <div
                   className="bg-accent h-full transition-all duration-1000"
                   style={{ width: `${display.probability}%` }}
@@ -190,26 +190,26 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
 
           <div className="flex justify-between items-center px-1">
             <div className="flex flex-col">
-              <span className="text-[8px] text-muted-foreground uppercase font-bold">Home CS%</span>
-              <span className="text-xs font-bold text-foreground">
+              <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-bold">Home CS%</span>
+              <span className="text-[10px] sm:text-xs font-bold text-foreground">
                 {prediction.home_clean_sheet_pct !== null && prediction.home_clean_sheet_pct !== undefined 
                   ? `${prediction.home_clean_sheet_pct.toFixed(0)}%` 
                   : 'N/A'}
               </span>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-[8px] text-muted-foreground uppercase font-bold">AI Verdict</span>
-              <span className={`text-xs font-black uppercase ${display.color}`}>{display.label}</span>
+              <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-bold">AI Verdict</span>
+              <span className={`text-[10px] sm:text-xs font-black uppercase ${display.color}`}>{display.label}</span>
             </div>
           </div>
 
           {/* Show AI explanation if available, otherwise show algorithm explanation */}
-          <div className="bg-muted/30 border border-border/50 rounded-xl p-3 text-[10px]">
-            <p className="text-muted-foreground">
+          <div className="bg-muted/30 border border-border/50 rounded-xl p-2 sm:p-3 text-[9px] sm:text-[10px]">
+            <p className="text-muted-foreground line-clamp-2 sm:line-clamp-none">
               {aiExplanation || prediction.analysis_explanation || 'No explanation available'}
             </p>
             {aiExplanation && (
-              <span className="text-[8px] text-accent font-bold mt-1 block">✨ AI Enhanced</span>
+              <span className="text-[8px] sm:text-[10px] text-accent font-bold mt-1 block">✨ AI Enhanced</span>
             )}
           </div>
 
@@ -218,7 +218,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
             <button
               onClick={handleEnhanceWithAI}
               disabled={enhancing}
-              className="w-full py-2 px-3 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl text-[10px] font-bold text-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-1.5 sm:py-2 px-2 sm:px-3 bg-accent/10 hover:bg-accent/20 border border-accent/30 rounded-xl text-[9px] sm:text-[10px] font-bold text-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {enhancing ? '✨ Enhancing...' : '✨ Enhance with AI'}
             </button>
@@ -231,13 +231,6 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
               // Optional: refresh prediction data to show updated testimony count
             }}
           />
-
-          {/* Temporarily disabled AIExplainer to fix rendering issues */}
-          {/* <AIExplainer
-            predictionId={prediction.id}
-            homeTeam={match.home_team.name}
-            awayTeam={match.away_team.name}
-          /> */}
         </div>
       </div>
     </Card>

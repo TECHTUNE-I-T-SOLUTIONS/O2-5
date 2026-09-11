@@ -7,8 +7,9 @@ import { Card } from '@/components/ui/card'
 import PredictionCard from '@/components/predictions/prediction-card'
 import RecentTestimonies from '@/components/testimonies/recent-testimonies'
 import { getFdPredictions, getFdMatches } from '@/lib/supabase'
-import { RefreshCw } from 'lucide-react'
 import SyncButton from '@/components/sync/sync-button'
+import { EmptyState } from '@/components/skeleton-loader'
+
 
 async function getUpcomingMatches() {
   try {
@@ -74,47 +75,47 @@ export default async function Home() {
       <main className="min-h-screen bg-background text-foreground">
         {/* Hero Section */}
         <div className="bg-muted/30 border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 py-16">
-            <h1 className="text-5xl font-black mb-4 tracking-tight">O2-5 PREDICTION PLATFORM</h1>
-            <p className="text-xl text-muted-foreground max-w-2xl">Advanced AI-powered statistical analysis for Over/Under 2.5 goal markets.</p>
+          <div className="max-w-7xl mx-auto px-4 py-8 sm:py-16">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 tracking-tight">O2-5 PREDICTION PLATFORM</h1>
+            <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl">Advanced AI-powered statistical analysis for Over/Under 2.5 goal markets.</p>
           </div>
         </div>
 
         {/* Stats Section */}
-        <div className="max-w-7xl mx-auto px-4 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-            <Card className="bg-card border-border p-6">
-              <p className="text-sm text-muted-foreground mb-2">Today's Matches</p>
-              <p className="text-3xl font-bold text-foreground mb-1">{matchData.total}</p>
-              <p className="text-xs text-muted-foreground">From Tier 1 leagues</p>
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-12 sm:mb-16">
+            <Card className="bg-card border-border p-4 sm:p-6">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-2">Today's Matches</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1">{matchData.total}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">From Tier 1 leagues</p>
             </Card>
-            <Card className="bg-card border-border p-6">
-              <p className="text-sm text-muted-foreground mb-2">Algorithm Predictions</p>
-              <p className="text-3xl font-bold text-accent mb-1">{over25Predictions.length}</p>
-              <p className="text-xs text-muted-foreground">Over 2.5 Goals ready</p>
+            <Card className="bg-card border-border p-4 sm:p-6">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-2">Algorithm Predictions</p>
+              <p className="text-2xl sm:text-3xl font-bold text-accent mb-1">{over25Predictions.length}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Over 2.5 Goals ready</p>
             </Card>
-            <Card className="bg-card border-border p-6">
-              <p className="text-sm text-muted-foreground mb-2">System Status</p>
-              <p className="text-3xl font-bold text-foreground mb-1">{isSyncComplete ? '✓ Ready' : 'Syncing'}</p>
-              <p className="text-xs text-muted-foreground">Daily predictions</p>
+            <Card className="bg-card border-border p-4 sm:p-6">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-2">System Status</p>
+              <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1">{isSyncComplete ? '✓ Ready' : 'Syncing'}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Daily predictions</p>
             </Card>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-12">
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
         
         {/* Over 2.5 Predictions Section */}
-        <section className="mb-16" id="predictions">
-          <div className="flex items-center justify-between mb-6">
+        <section className="mb-12 sm:mb-16" id="predictions">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-accent">AI Over 2.5 Predictions</h2>
-              <p className="text-muted-foreground">High confidence picks from our algorithm</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-accent">AI Over 2.5 Predictions</h2>
+              <p className="text-sm text-muted-foreground">High confidence picks from our algorithm</p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
               <SyncButton isSyncComplete={isSyncComplete} />
-              <Link href="/predictions">
-                <Button variant="ghost" className="text-accent">
+              <Link href="/predictions" className="w-full sm:w-auto">
+                <Button variant="ghost" className="text-accent w-full sm:w-auto">
                   All Predictions →
                 </Button>
               </Link>
@@ -123,7 +124,7 @@ export default async function Home() {
 
           <Suspense fallback={<LoadingMatchCards />}>
             {over25Predictions && over25Predictions.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {over25Predictions.slice(0, 6).map((pred: any) => (
                   <PredictionCard key={pred.id} prediction={pred} />
                 ))}
@@ -138,46 +139,46 @@ export default async function Home() {
         </section>
 
         {/* Win/Draw and GG Predictions Preview */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
+        <section className="mb-12 sm:mb-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h2 className="text-2xl font-bold">More Prediction Types</h2>
-              <p className="text-muted-foreground">Win/Draw and Both Teams to Score analysis</p>
+              <h2 className="text-xl sm:text-2xl font-bold">More Prediction Types</h2>
+              <p className="text-sm text-muted-foreground">Win/Draw and Both Teams to Score analysis</p>
             </div>
-            <Link href="/predictions">
-              <Button variant="ghost" className="text-accent">
+            <Link href="/predictions" className="w-full sm:w-auto">
+              <Button variant="ghost" className="text-accent w-full sm:w-auto">
                 View All Types →
               </Button>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="p-6 bg-card border-border">
-              <h3 className="text-lg font-bold mb-2 text-accent">Win/Draw Predictions</h3>
-              <p className="text-sm text-muted-foreground mb-4">Based on team form, league position, and defensive strength.</p>
-              <Link href="/predictions">
-                <Button variant="outline" className="w-full">View Win/Draw</Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <Card className="p-4 sm:p-6 bg-card border-border">
+              <h3 className="text-base sm:text-lg font-bold mb-2 text-accent">Win/Draw Predictions</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4">Based on team form, league position, and defensive strength.</p>
+              <Link href="/predictions" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">View Win/Draw</Button>
               </Link>
             </Card>
-            <Card className="p-6 bg-card border-border">
-              <h3 className="text-lg font-bold mb-2 text-accent">Both Teams to Score</h3>
-              <p className="text-sm text-muted-foreground mb-4">Matches where both teams are likely to score based on offensive form.</p>
-              <Link href="/predictions">
-                <Button variant="outline" className="w-full">View GG Predictions</Button>
+            <Card className="p-4 sm:p-6 bg-card border-border">
+              <h3 className="text-base sm:text-lg font-bold mb-2 text-accent">Both Teams to Score</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-4">Matches where both teams are likely to score based on offensive form.</p>
+              <Link href="/predictions" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">View GG Predictions</Button>
               </Link>
             </Card>
           </div>
         </section>
 
         {/* Upcoming Matches (Football-Data) */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
+        <section className="mb-12 sm:mb-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h2 className="text-2xl font-bold">Today's Matches</h2>
-              <p className="text-muted-foreground">Matches from Tier 1 Leagues</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Today's Matches</h2>
+              <p className="text-sm text-muted-foreground">Matches from Tier 1 Leagues</p>
             </div>
-            <Link href="/matches">
-              <Button variant="ghost" className="text-accent">
+            <Link href="/matches" className="w-full sm:w-auto">
+              <Button variant="ghost" className="text-accent w-full sm:w-auto">
                 View All Matches →
               </Button>
             </Link>
@@ -185,17 +186,17 @@ export default async function Home() {
 
           <Suspense fallback={<LoadingMatchCards />}>
             {matchData.fd && matchData.fd.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {matchData.fd.map((match: any) => (
-                  <Card key={match.id} className="p-4 bg-card border-border flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <img src={match.home_team.crest} alt="" className="w-6 h-6" />
-                      <span className="text-sm font-medium">{match.home_team.name}</span>
+                  <Card key={match.id} className="p-3 sm:p-4 bg-card border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <img src={match.home_team.crest} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />
+                      <span className="text-xs sm:text-sm font-medium truncate">{match.home_team.name}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground font-bold italic">VS</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-right">{match.away_team.name}</span>
-                      <img src={match.away_team.crest} alt="" className="w-6 h-6" />
+                    <span className="text-[10px] sm:text-xs text-muted-foreground font-bold italic">VS</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="text-xs sm:text-sm font-medium text-right truncate">{match.away_team.name}</span>
+                      <img src={match.away_team.crest} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                   </Card>
                 ))}
@@ -207,14 +208,14 @@ export default async function Home() {
         </section>
 
         {/* Recent Testimonies Section */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
+        <section className="mb-12 sm:mb-16">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h2 className="text-2xl font-bold">Recent Testimonies</h2>
-              <p className="text-muted-foreground">Community feedback on prediction outcomes</p>
+              <h2 className="text-xl sm:text-2xl font-bold">Recent Testimonies</h2>
+              <p className="text-sm text-muted-foreground">Community feedback on prediction outcomes</p>
             </div>
-            <Link href="/testimonies">
-              <Button variant="ghost" className="text-accent">
+            <Link href="/testimonies" className="w-full sm:w-auto">
+              <Button variant="ghost" className="text-accent w-full sm:w-auto">
                 View All →
               </Button>
             </Link>
@@ -233,12 +234,12 @@ export default async function Home() {
 
 function LoadingMatchCards() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {[1, 2, 3, 4, 5, 6].map((i) => (
-        <Card key={i} className="p-4 bg-card border-border animate-pulse">
+        <Card key={i} className="p-3 sm:p-4 bg-card border-border animate-pulse">
           <div className="flex items-center justify-between">
-            <div className="h-4 bg-muted rounded w-20" />
-            <div className="h-4 bg-muted rounded w-16" />
+            <div className="h-3 sm:h-4 bg-muted rounded w-16 sm:w-20" />
+            <div className="h-3 sm:h-4 bg-muted rounded w-12 sm:w-16" />
           </div>
         </Card>
       ))}
