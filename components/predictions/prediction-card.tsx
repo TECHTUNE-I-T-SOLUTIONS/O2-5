@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { format } from 'date-fns'
 import TestimonyForm from '@/components/testimonies/testimony-form'
+import { PredictionDetailsModal } from '@/components/modals/prediction-details-modal'
+import { Button } from '@/components/ui/button'
+import { Eye } from 'lucide-react'
 
 interface PredictionCardProps {
   prediction: {
@@ -38,6 +41,8 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
   const [mounted, setMounted] = useState(false)
   const [enhancing, setEnhancing] = useState(false)
   const [aiExplanation, setAiExplanation] = useState<string | null>(prediction.ai_explanation || null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [localPrediction, setLocalPrediction] = useState(prediction)
 
   useEffect(() => {
     setMounted(true)
@@ -54,6 +59,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
       const data = await response.json()
       if (data.success) {
         setAiExplanation(data.aiExplanation)
+        setLocalPrediction({ ...localPrediction, ai_explanation: data.aiExplanation })
       }
     } catch (error) {
       console.error('Failed to enhance with AI:', error)
@@ -62,17 +68,17 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
     }
   }
 
-  const predictionType = prediction.prediction_type || 'OVER_2_5'
+  const predictionType = localPrediction.prediction_type || 'OVER_2_5'
   
   // Support both new schema (over_2_5_prob) and legacy schema (probability) for resilience
-  const over25 = prediction.over_2_5_prob ?? (prediction as any).probability ?? 0
-  const under25 = prediction.under_2_5_prob ?? (prediction as any).under_probability ?? 0
-  const isOver = prediction.predicted_over_2_5 ?? (over25 > under25)
-  const winDraw = prediction.win_draw_prob ?? 0
-  const isWinDraw = prediction.predicted_win_draw ?? false
-  const gg = prediction.gg_prob ?? 0
-  const isGG = prediction.predicted_gg ?? false
-  const { match } = prediction
+  const over25 = localPrediction.over_2_5_prob ?? (localPrediction as any).probability ?? 0
+  const under25 = localPrediction.under_2_5_prob ?? (localPrediction as any).under_probability ?? 0
+  const isOver = localPrediction.predicted_over_2_5 ?? (over25 > under25)
+  const winDraw = localPrediction.win_draw_prob ?? 0
+  const isWinDraw = localPrediction.predicted_win_draw ?? false
+  const gg = localPrediction.gg_prob ?? 0
+  const isGG = localPrediction.predicted_gg ?? false
+  const { match } = localPrediction
 
   const getPredictionDisplay = () => {
     switch (predictionType) {
@@ -118,10 +124,10 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
       <div className="p-3 sm:p-4 border-b border-border bg-muted/50 group-hover:bg-accent/5 transition-colors">
         <div className="flex justify-between items-center">
           <span className="text-[8px] sm:text-[10px] font-black text-accent uppercase tracking-[0.2em] truncate">
-            {match.competition.name}
+            {localPrediction.match.competition.name}
           </span>
           <span className="text-[8px] sm:text-[10px] font-medium text-muted-foreground bg-background px-2 py-0.5 rounded-full border border-border whitespace-nowrap">
-            {mounted ? format(new Date(match.utc_date), 'MMM d, HH:mm') : 'Loading...'}
+            {mounted ? format(new Date(localPrediction.match.utc_date), 'MMM d, HH:mm') : 'Loading...'}
           </span>
         </div>
       </div>
@@ -131,12 +137,12 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
           <div className="flex flex-col items-center gap-2 sm:gap-3 flex-1">
             <div className="relative w-10 h-10 sm:w-14 sm:h-14 p-1.5 sm:p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
               <img
-                src={match.home_team.crest}
-                alt={match.home_team.name}
+                src={localPrediction.match.home_team.crest}
+                alt={localPrediction.match.home_team.name}
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className="text-[10px] sm:text-xs font-bold text-center line-clamp-1 h-6 sm:h-8 flex items-center">{match.home_team.name}</span>
+            <span className="text-[10px] sm:text-xs font-bold text-center line-clamp-1 h-6 sm:h-8 flex items-center">{localPrediction.match.home_team.name}</span>
           </div>
 
           <div className="flex flex-col items-center gap-1">
@@ -146,12 +152,12 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
           <div className="flex flex-col items-center gap-2 sm:gap-3 flex-1">
             <div className="relative w-10 h-10 sm:w-14 sm:h-14 p-1.5 sm:p-2 bg-background rounded-xl border border-border shadow-sm group-hover:shadow-accent/20 transition-all">
               <img
-                src={match.away_team.crest}
-                alt={match.away_team.name}
+                src={localPrediction.match.away_team.crest}
+                alt={localPrediction.match.away_team.name}
                 className="w-full h-full object-contain"
               />
             </div>
-            <span className="text-[10px] sm:text-xs font-bold text-center line-clamp-1 h-6 sm:h-8 flex items-center">{match.away_team.name}</span>
+            <span className="text-[10px] sm:text-xs font-bold text-center line-clamp-1 h-6 sm:h-8 flex items-center">{localPrediction.match.away_team.name}</span>
           </div>
         </div>
 
@@ -204,8 +210,8 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
             <div className="flex flex-col">
               <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-bold">Home CS%</span>
               <span className="text-[10px] sm:text-xs font-bold text-foreground">
-                {prediction.home_clean_sheet_pct !== null && prediction.home_clean_sheet_pct !== undefined 
-                  ? `${prediction.home_clean_sheet_pct.toFixed(0)}%` 
+                {localPrediction.home_clean_sheet_pct !== null && localPrediction.home_clean_sheet_pct !== undefined 
+                  ? `${localPrediction.home_clean_sheet_pct.toFixed(0)}%` 
                   : 'N/A'}
               </span>
             </div>
@@ -218,12 +224,23 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
           {/* Show AI explanation if available, otherwise show algorithm explanation */}
           <div className="bg-muted/30 border border-border/50 rounded-xl p-2 sm:p-3 text-[9px] sm:text-[10px]">
             <p className="text-muted-foreground line-clamp-2 sm:line-clamp-none">
-              {aiExplanation || prediction.analysis_explanation || 'No explanation available'}
+              {aiExplanation || localPrediction.analysis_explanation || 'No explanation available'}
             </p>
             {aiExplanation && (
               <span className="text-[8px] sm:text-[10px] text-accent font-bold mt-1 block">✨ AI Enhanced</span>
             )}
           </div>
+
+          {/* View Full Details Button */}
+          <Button
+            onClick={() => setShowDetailsModal(true)}
+            variant="outline"
+            size="sm"
+            className="w-full text-[9px] sm:text-[10px] font-bold"
+          >
+            <Eye className="h-3 w-3 mr-1" />
+            View Full Details
+          </Button>
 
           {/* Enhance with AI button */}
           {!aiExplanation && (
@@ -245,6 +262,13 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
           />
         </div>
       </div>
+
+      {/* Prediction Details Modal */}
+      <PredictionDetailsModal
+        open={showDetailsModal}
+        onOpenChange={setShowDetailsModal}
+        prediction={localPrediction}
+      />
     </Card>
   )
 }

@@ -164,6 +164,9 @@ export async function getFdMatches(limit?: number) {
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
   
+  // Default to 50 if no limit specified
+  const actualLimit = limit || 50
+  
   let query = supabase
     .from('fd_matches')
     .select(`
@@ -175,10 +178,7 @@ export async function getFdMatches(limit?: number) {
     .in('status', ['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED'])
     .gte('utc_date', today.toISOString())
     .order('utc_date', { ascending: true })
-
-  if (limit) {
-    query = query.limit(limit)
-  }
+    .limit(actualLimit)
 
   const { data, error } = await query
   if (error) throw error
@@ -191,7 +191,7 @@ export async function getFdMatches(limit?: number) {
       const apiFixtures = await fetchTodayFixtures()
       
       // Transform API-Football format to match our interface
-      const transformedMatches = apiFixtures.slice(0, limit || 20).map(f => ({
+      const transformedMatches = apiFixtures.slice(0, actualLimit).map(f => ({
         id: f.fixture.id,
         utc_date: f.fixture.date,
         status: f.fixture.status.short,
@@ -280,7 +280,8 @@ export async function getFdPredictions(limit: number = 20, offset: number = 0, p
     // Filter by date range (target date to next day)
     .gte('match.utc_date', targetDate.toISOString())
     .lt('match.utc_date', nextDay.toISOString())
-    .order('utc_date', { foreignTable: 'match', ascending: true })
+    // Order by confidence score (highest first) to show best predictions
+    .order('confidence_score', { ascending: false })
     .range(offset, offset + limit - 1)
 
   // Filter by prediction type if specified

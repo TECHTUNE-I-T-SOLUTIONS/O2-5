@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const sort = searchParams.get('sort') || 'utc_date'
   const order = searchParams.get('order') || 'asc'
   const cursor = searchParams.get('cursor')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const limit = parseInt(searchParams.get('limit') || '50')
   const todayOnly = searchParams.get('today') === 'true'
 
   try {
@@ -34,6 +34,11 @@ export async function GET(request: Request) {
       tomorrow.setDate(tomorrow.getDate() + 1)
       
       query = query.gte('utc_date', today.toISOString()).lt('utc_date', tomorrow.toISOString())
+    } else {
+      // If not today only, filter for scheduled/upcoming matches from today onwards
+      const today = new Date()
+      today.setUTCHours(0, 0, 0, 0)
+      query = query.gte('utc_date', today.toISOString())
     }
 
     // Filters

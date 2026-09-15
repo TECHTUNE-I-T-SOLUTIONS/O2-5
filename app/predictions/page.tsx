@@ -33,9 +33,9 @@ export default function PredictionsPage() {
     try {
       const dateParam = `&date=${currentNigerianDate}`
       const [over25, winDraw, gg] = await Promise.all([
-        fetch(`/api/predictions?limit=50&type=OVER_2_5${dateParam}`).then(r => r.json()),
-        fetch(`/api/predictions?limit=50&type=WIN_DRAW${dateParam}`).then(r => r.json()),
-        fetch(`/api/predictions?limit=50&type=GG${dateParam}`).then(r => r.json())
+        fetch(`/api/predictions?limit=100&type=OVER_2_5${dateParam}`).then(r => r.json()),
+        fetch(`/api/predictions?limit=100&type=WIN_DRAW${dateParam}`).then(r => r.json()),
+        fetch(`/api/predictions?limit=100&type=GG${dateParam}`).then(r => r.json())
       ])
       setOver25Predictions(over25 || [])
       setWinDrawPredictions(winDraw || [])

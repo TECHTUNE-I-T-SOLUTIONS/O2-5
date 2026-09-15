@@ -13,8 +13,8 @@ import { EmptyState } from '@/components/skeleton-loader'
 
 async function getUpcomingMatches() {
   try {
-    // Get today's matches from Football-Data API
-    const fdMatches = await getFdMatches(6)
+    // Get upcoming matches from Football-Data API (increased to 50)
+    const fdMatches = await getFdMatches(50)
     
     return {
       fd: fdMatches || [],
@@ -28,7 +28,7 @@ async function getUpcomingMatches() {
 
 async function getOver25Predictions() {
   try {
-    const predictions = await getFdPredictions(6, 0, 'OVER_2_5')
+    const predictions = await getFdPredictions(20, 0, 'OVER_2_5')
     return predictions || []
   } catch (error) {
     console.error('Error fetching predictions:', error)
@@ -85,7 +85,7 @@ export default async function Home() {
         <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-12 sm:mb-16">
             <Card className="bg-card border-border p-4 sm:p-6">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-2">Today's Matches</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mb-2">Upcoming Matches</p>
               <p className="text-2xl sm:text-3xl font-bold text-foreground mb-1">{matchData.total}</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground">From Tier 1 leagues</p>
             </Card>
@@ -125,7 +125,7 @@ export default async function Home() {
           <Suspense fallback={<LoadingMatchCards />}>
             {over25Predictions && over25Predictions.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {over25Predictions.slice(0, 6).map((pred: any) => (
+                {over25Predictions.slice(0, 20).map((pred: any) => (
                   <PredictionCard key={pred.id} prediction={pred} />
                 ))}
               </div>
@@ -174,7 +174,7 @@ export default async function Home() {
         <section className="mb-12 sm:mb-16">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
             <div>
-              <h2 className="text-xl sm:text-2xl font-bold">Today's Matches</h2>
+              <h2 className="text-xl sm:text-2xl font-bold">Upcoming Matches</h2>
               <p className="text-sm text-muted-foreground">Matches from Tier 1 Leagues</p>
             </div>
             <Link href="/matches" className="w-full sm:w-auto">
@@ -187,7 +187,7 @@ export default async function Home() {
           <Suspense fallback={<LoadingMatchCards />}>
             {matchData.fd && matchData.fd.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {matchData.fd.map((match: any) => (
+                {matchData.fd.slice(0, 20).map((match: any) => (
                   <Card key={match.id} className="p-3 sm:p-4 bg-card border-border flex items-center justify-between">
                     <div className="flex items-center gap-2 sm:gap-3">
                       <img src={match.home_team.crest} alt="" className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -235,7 +235,7 @@ export default async function Home() {
 function LoadingMatchCards() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((i) => (
         <Card key={i} className="p-3 sm:p-4 bg-card border-border animate-pulse">
           <div className="flex items-center justify-between">
             <div className="h-3 sm:h-4 bg-muted rounded w-16 sm:w-20" />

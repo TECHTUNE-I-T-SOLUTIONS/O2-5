@@ -130,6 +130,69 @@ async function getTeamFormString(teamId: number, matches: number = 5) {
   return formString
 }
 
+async function getHeadToHeadRecord(homeTeamId: number, awayTeamId: number, limit: number = 5) {
+  const { data, error } = await supabase
+    .from('fd_matches')
+    .select('*')
+    .or(`and(home_team_id.eq.${homeTeamId},away_team_id.eq.${awayTeamId}),and(home_team_id.eq.${awayTeamId},away_team_id.eq.${homeTeamId})`)
+    .eq('status', 'FINISHED')
+    .order('utc_date', { ascending: false })
+    .limit(limit)
+
+  if (error || !data) return { homeWins: 0, awayWins: 0, draws: 0, total: 0 }
+
+  let homeWins = 0, awayWins = 0, draws = 0
+  for (const match of data) {
+    if (match.winner === 'HOME_TEAM' && match.home_team_id === homeTeamId) homeWins++
+    else if (match.winner === 'AWAY_TEAM' && match.away_team_id === homeTeamId) awayWins++
+    else if (match.winner === 'HOME_TEAM' && match.home_team_id === awayTeamId) awayWins++
+    else if (match.winner === 'AWAY_TEAM' && match.away_team_id === awayTeamId) homeWins++
+    else draws++
+  }
+
+  return { homeWins, awayWins, draws, total: data.length }
+}
+
+async function getHomeAwayPerformance(teamId: number) {
+  // Get home performance
+  const { data: homeMatches } = await supabase
+    .from('fd_matches')
+    .select('*')
+    .eq('home_team_id', teamId)
+    .eq('status', 'FINISHED')
+    .order('utc_date', { ascending: false })
+    .limit(10)
+
+  // Get away performance
+  const { data: awayMatches } = await supabase
+    .from('fd_matches')
+    .select('*')
+    .eq('away_team_id', teamId)
+    .eq('status', 'FINISHED')
+    .order('utc_date', { ascending: false })
+    .limit(10)
+
+  let homeWins = 0, homeDraws = 0, homeLosses = 0
+  let awayWins = 0, awayDraws = 0, awayLosses = 0
+
+  for (const match of homeMatches || []) {
+    if (match.winner === 'HOME_TEAM') homeWins++
+    else if (match.winner === 'DRAW') homeDraws++
+    else homeLosses++
+  }
+
+  for (const match of awayMatches || []) {
+    if (match.winner === 'AWAY_TEAM') awayWins++
+    else if (match.winner === 'DRAW') awayDraws++
+    else awayLosses++
+  }
+
+  return {
+    home: { wins: homeWins, draws: homeDraws, losses: homeLosses, total: homeMatches?.length || 0 },
+    away: { wins: awayWins, draws: awayDraws, losses: awayLosses, total: awayMatches?.length || 0 }
+  }
+}
+
 async function getHomeRecord(teamId: number) {
   const { data, error } = await supabase
     .from('fd_matches')
@@ -171,59 +234,14 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
   const homeFormString = await getTeamFormString(homeTeamId, 5)
   const awayFormString = await getTeamFormString(awayTeamId, 5)
 
-  const criteriaMet: string[] = []
-  let confidenceScore = 0
+  // Get H2H record
+  const h2hRecord = await getHeadToHeadRecord(homeTeamId, awayTeamId, 5)
 
-  // Add form analysis to criteria
-  if (homeFormString) {
-    const homeRecentForm = homeFormString.substring(0, 3) // Last 3 matches
-    const homeWinsInRecent = (homeRecentForm.match(/W/g) || []).length
-    if (homeWinsInRecent >= 2) {
-      criteriaMet.push(`Home team strong form: ${homeRecentForm}`)
-      confidenceScore += 10
-    }
-  }
+  // Get home/away performance
+  const homePerformance = await getHomeAwayPerformance(homeTeamId)
+  const awayPerformance = await getHomeAwayPerformance(awayTeamId)
 
-  if (awayFormString) {
-    const awayRecentForm = awayFormString.substring(0, 3) // Last 3 matches
-    const awayWinsInRecent = (awayRecentForm.match(/W/g) || []).length
-    if (awayWinsInRecent >= 2) {
-      criteriaMet.push(`Away team strong form: ${awayRecentForm}`)
-      confidenceScore += 10
-    }
-  }
-
-  // Get standings for both teams
-  const homeStandings = await getTeamStandings(homeTeamId, competitionId)
-  const awayStandings = await getTeamStandings(awayTeamId, competitionId)
-
-  const homePosition = homeStandings?.position || 20
-  const awayPosition = awayStandings?.position || 20
-
-  // Criteria 1: One team must have beaten at least 2 out of top 5 teams
-  const homeTopTeamPerf = await checkTeamPerformanceAgainstTopTeams(homeTeamId, competitionId)
-  const awayTopTeamPerf = await checkTeamPerformanceAgainstTopTeams(awayTeamId, competitionId)
-
-  if (homeTopTeamPerf.winsAgainstTop >= 2) {
-    criteriaMet.push('Home team has beaten top 5 teams')
-    confidenceScore += 20
-  }
-  if (awayTopTeamPerf.winsAgainstTop >= 2) {
-    criteriaMet.push('Away team has beaten top 5 teams')
-    confidenceScore += 20
-  }
-
-  // Criteria 2: One team is among top 4
-  if (homePosition <= 4) {
-    criteriaMet.push('Home team in top 4')
-    confidenceScore += 15
-  }
-  if (awayPosition <= 4) {
-    criteriaMet.push('Away team in top 4')
-    confidenceScore += 15
-  }
-
-  // Criteria 3: One team is defensively strong (no goals in last 2-3 games)
+  // Get last 3 matches for defensive analysis
   const homeLast3 = await getTeamLastMatches(homeTeamId, 3)
   const awayLast3 = await getTeamLastMatches(awayTeamId, 3)
 
@@ -237,14 +255,14 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
     awayConcededLast3 += m.home_team_id === awayTeamId ? (m.score_fulltime_away || 0) : (m.score_fulltime_home || 0)
   }
 
-  const defensiveStrength = Math.max(0, 100 - ((homeConcededLast3 + awayConcededLast3) / 6 * 100))
-  
-  if (homeConcededLast3 === 0 || awayConcededLast3 === 0) {
-    criteriaMet.push('Team with strong defense (no goals conceded)')
-    confidenceScore += 20
-  }
+  // Get standings for both teams
+  const homeStandings = await getTeamStandings(homeTeamId, competitionId)
+  const awayStandings = await getTeamStandings(awayTeamId, competitionId)
 
-  // Criteria 4: One team is among last 3
+  const homePosition = homeStandings ? homeStandings.position : 20
+  const awayPosition = awayStandings ? awayStandings.position : 20
+
+  // Get league size
   const totalTeams = await supabase
     .from('fd_standings')
     .select('team_id', { count: 'exact', head: true })
@@ -255,26 +273,192 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
     .single()
 
   const leagueSize = totalTeams.count || 20
+
+  const criteriaMet: string[] = []
+  let confidenceScore = 0
+
+  // NEW ENHANCED CRITERIA FOR WIN/DRAW
+
+  // Criterion 1: Which team wins its last 5 games between the 2 playing teams (H2H)
+  if (h2hRecord.total >= 3) {
+    if (h2hRecord.homeWins >= 3) {
+      criteriaMet.push(`Home team dominates H2H (${h2hRecord.homeWins}-${h2hRecord.awayWins}-${h2hRecord.draws})`)
+      confidenceScore += 20
+    } else if (h2hRecord.awayWins >= 3) {
+      criteriaMet.push(`Away team dominates H2H (${h2hRecord.homeWins}-${h2hRecord.awayWins}-${h2hRecord.draws})`)
+      confidenceScore += 20
+    }
+  }
+
+  // Criterion 2: Team in very good form with reputation for winning important games
+  if (homeFormString) {
+    const homeRecentForm = homeFormString.substring(0, 5) // Last 5 matches
+    const homeWinsInRecent = (homeRecentForm.match(/W/g) || []).length
+    const homeUnbeatenInRecent = (homeRecentForm.match(/[WD]/g) || []).length
+    
+    if (homeWinsInRecent >= 4) {
+      criteriaMet.push(`Home team excellent form: ${homeRecentForm}`)
+      confidenceScore += 15
+    } else if (homeUnbeatenInRecent >= 4) {
+      criteriaMet.push(`Home team unbeaten recently: ${homeRecentForm}`)
+      confidenceScore += 10
+    }
+  }
+
+  if (awayFormString) {
+    const awayRecentForm = awayFormString.substring(0, 5) // Last 5 matches
+    const awayWinsInRecent = (awayRecentForm.match(/W/g) || []).length
+    const awayUnbeatenInRecent = (awayRecentForm.match(/[WD]/g) || []).length
+    
+    if (awayWinsInRecent >= 4) {
+      criteriaMet.push(`Away team excellent form: ${awayRecentForm}`)
+      confidenceScore += 15
+    } else if (awayUnbeatenInRecent >= 4) {
+      criteriaMet.push(`Away team unbeaten recently: ${awayRecentForm}`)
+      confidenceScore += 10
+    }
+  }
+
+  // Criterion 3: Home/Away performance (some teams are monsters at home but terrible away)
+  const homeWinRate = homePerformance.home.total > 0 ? (homePerformance.home.wins / homePerformance.home.total) * 100 : 0
+  const awayWinRate = awayPerformance.away.total > 0 ? (awayPerformance.away.wins / awayPerformance.away.total) * 100 : 0
   
-  if (homePosition >= leagueSize - 2) {
-    criteriaMet.push('Home team in bottom 3')
+  if (homeWinRate >= 70 && homePerformance.home.total >= 5) {
+    criteriaMet.push(`Home team strong at home (${homePerformance.home.wins}W-${homePerformance.home.draws}D-${homePerformance.home.losses}L)`)
+    confidenceScore += 15
+  }
+  
+  if (awayWinRate >= 60 && awayPerformance.away.total >= 5) {
+    criteriaMet.push(`Away team good away form (${awayPerformance.away.wins}W-${awayPerformance.away.draws}D-${awayPerformance.away.losses}L)`)
+    confidenceScore += 12
+  }
+
+  // Criterion 4: One team is among top 4 (implies good reputation for winning)
+  if (homePosition <= 4 && homePosition > 0 && homeStandings) {
+    criteriaMet.push('Home team in top 4 (strong reputation)')
+    confidenceScore += 12
+  }
+  if (awayPosition <= 4 && awayPosition > 0 && awayStandings) {
+    criteriaMet.push('Away team in top 4 (strong reputation)')
+    confidenceScore += 12
+  }
+
+  // Criterion 5: Team with solid defense (concedes no goal or less than 2 goals per match)
+  const homeConcededAvg = homeLast3.length > 0 ? homeConcededLast3 / homeLast3.length : 0
+  const awayConcededAvg = awayLast3.length > 0 ? awayConcededLast3 / awayLast3.length : 0
+  
+  if (homeConcededAvg < 1.5) {
+    criteriaMet.push('Home team solid defense (<1.5 goals conceded avg)')
     confidenceScore += 10
   }
-  if (awayPosition >= leagueSize - 2) {
-    criteriaMet.push('Away team in bottom 3')
+  if (awayConcededAvg < 1.5) {
+    criteriaMet.push('Away team solid defense (<1.5 goals conceded avg)')
     confidenceScore += 10
   }
 
-  // Criteria 5: One team hasn't lost at home in last 3 games
+  // Criterion 6: Team fighting for UCL spot (top 4 or top 6 depending on league)
+  const homeInUCLRace = homePosition <= 6 && homePosition > 0 && homeStandings
+  const awayInUCLRace = awayPosition <= 6 && awayPosition > 0 && awayStandings
+  
+  if (homeInUCLRace) {
+    criteriaMet.push('Home team fighting for UCL spot')
+    confidenceScore += 8
+  }
+  if (awayInUCLRace) {
+    criteriaMet.push('Away team fighting for UCL spot')
+    confidenceScore += 8
+  }
+
+  // Criterion 7: Team fighting relegation at home (desperate not to lose)
+  if (homePosition >= leagueSize - 3) {
+    criteriaMet.push('Home team fighting relegation at home')
+    confidenceScore += 10
+  }
+
+  // Criterion 8: One team hasn't lost at home in last 3 games
   const homeRecord = await getHomeRecord(homeTeamId)
+  const awayRecord = await getHomeRecord(awayTeamId)
+  
   if (homeRecord.undefeated) {
     criteriaMet.push('Home team undefeated at home (last 3)')
+    confidenceScore += 12
+  }
+  
+  // Also check away team's away performance
+  if (awayPerformance.away.total >= 3) {
+    const awayAwayLosses = awayPerformance.away.losses
+    if (awayAwayLosses === 0) {
+      criteriaMet.push('Away team undefeated away (last 3)')
+      confidenceScore += 10
+    }
+  }
+
+  // Criterion 9: One team has beaten at least 2 out of top 5 teams
+  const homeTopTeamPerf = await checkTeamPerformanceAgainstTopTeams(homeTeamId, competitionId)
+  const awayTopTeamPerf = await checkTeamPerformanceAgainstTopTeams(awayTeamId, competitionId)
+
+  if (homeTopTeamPerf.winsAgainstTop >= 2) {
+    criteriaMet.push('Home team has beaten top 5 teams')
+    confidenceScore += 15
+  }
+  if (awayTopTeamPerf.winsAgainstTop >= 2) {
+    criteriaMet.push('Away team has beaten top 5 teams')
     confidenceScore += 15
   }
 
+  // Criterion 10: One team is among last 3 (relegation battle)
+  if (homePosition >= leagueSize - 2 && homePosition > 0 && homeStandings) {
+    criteriaMet.push('Home team in bottom 3')
+    confidenceScore += 8
+  }
+  if (awayPosition >= leagueSize - 2 && awayPosition > 0 && awayStandings) {
+    criteriaMet.push('Away team in bottom 3')
+    confidenceScore += 8
+  }
+
+  // Criterion 11: Set pieces advantage (teams with good corners/free steals)
+  // This is estimated based on scoring patterns and form
+  if (homeFormStrength > awayFormStrength + 2) {
+    criteriaMet.push('Home team set pieces advantage (better form)')
+    confidenceScore += 6
+  }
+  if (awayFormStrength > homeFormStrength + 2) {
+    criteriaMet.push('Away team set pieces advantage (better form)')
+    confidenceScore += 6
+  }
+
+  // Criterion 12: Home advantage factor (home teams generally have advantage)
+  if (homePerformance.home.total >= 5) {
+    const homeWinRate = (homePerformance.home.wins / homePerformance.home.total) * 100
+    if (homeWinRate >= 50) {
+      criteriaMet.push('Home team has home advantage (50%+ home win rate)')
+      confidenceScore += 8
+    }
+  }
+
+  // Criterion 13: Pressure situations
+  if (homeInRelegationBattle || awayInRelegationBattle) {
+    criteriaMet.push('High pressure match (relegation battle)')
+    confidenceScore += 5
+  }
+  if (homeInUCLRace || awayInUCLRace) {
+    criteriaMet.push('High pressure match (top 4 race)')
+    confidenceScore += 5
+  }
+
+  // Minimum 2 criteria requirement for verdict
+  const hasMinimumCriteria = criteriaMet.length >= 2
+
+  // Calculate defensive strength
+  const defensiveStrength = Math.max(0, 100 - ((homeConcededLast3 + awayConcededLast3) / 6 * 100))
+
   // Calculate form strength
-  const homeFormStrength = homeStandings ? (homeStandings.points / homeStandings.played_games) * 10 : 5
-  const awayFormStrength = awayStandings ? (awayStandings.points / awayStandings.played_games) * 10 : 5
+  const homeFormStrength = (homeStandings && homeStandings.played_games > 0) 
+    ? (homeStandings.points / homeStandings.played_games) * 10 
+    : 5
+  const awayFormStrength = (awayStandings && awayStandings.played_games > 0) 
+    ? (awayStandings.points / awayStandings.played_games) * 10 
+    : 5
 
   // Calculate win/draw probability
   const positionAdvantage = (awayPosition - homePosition) / leagueSize * 30
@@ -283,6 +467,12 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
 
   let winDrawProb = 50 + positionAdvantage + formAdvantage + defensiveBonus
   winDrawProb = Math.min(Math.max(winDrawProb, 20), 90)
+
+  // If minimum criteria not met, reduce confidence and probability
+  if (!hasMinimumCriteria) {
+    winDrawProb = Math.max(winDrawProb - 10, 30)
+    confidenceScore = Math.max(confidenceScore - 15, 10)
+  }
 
   const predictedWinDraw = winDrawProb > 55
 
@@ -311,7 +501,7 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
     : `${awayTeamName} win predicted`
     
   const analysisExplanation = criteriaMet.length > 0 
-    ? `${teamPrediction}. Analysis based on ${criteriaMet.length} criteria: ${criteriaMet.join(', ')}. Form: Home (${homeFormString || 'N/A'}), Away (${awayFormString || 'N/A'}). Confidence score: ${confidenceScore}/100.`
+    ? `${teamPrediction}. Analysis based on ${criteriaMet.length} criteria: ${criteriaMet.join(', ')}. Form: Home (${homeFormString || 'N/A'}), Away (${awayFormString || 'N/A'}). H2H: ${h2hRecord.homeWins}-${h2hRecord.awayWins}-${h2hRecord.draws}. League Positions: Home ${homePosition}, Away ${awayPosition}. Confidence score: ${confidenceScore}/100.`
     : `Limited data available for prediction. ${teamPrediction}.`
 
   return {
@@ -325,7 +515,7 @@ export async function calculateWinDrawPredictions(matchId: number): Promise<WinD
     leaguePositionHome: homePosition,
     leaguePositionAway: awayPosition,
     homeRecordLast3: homeRecord.record,
-    awayRecordLast3: (await getHomeRecord(awayTeamId)).record,
+    awayRecordLast3: awayRecord.record,
     criteriaMet,
     confidenceScore: Math.min(confidenceScore, 100),
     analysisExplanation
@@ -378,11 +568,6 @@ export async function processAllWinDrawPredictions() {
     try {
       const result = await calculateWinDrawPredictions(m.id)
       if (result) {
-        // Use algorithm's own analysis directly (no AI calls for speed)
-        const aiExplanation = result.analysisExplanation
-        const aiConfidence = result.confidenceScore
-        const aiKeyFactors = result.criteriaMet
-
         await supabase.from('fd_predictions').upsert({
           match_id: result.matchId,
           prediction_type: 'WIN_DRAW',
@@ -396,9 +581,9 @@ export async function processAllWinDrawPredictions() {
           league_position_away: result.leaguePositionAway,
           home_record_last_3: result.homeRecordLast3,
           away_record_last_3: result.awayRecordLast3,
-          criteria_met: aiKeyFactors,
-          confidence_score: aiConfidence,
-          analysis_explanation: aiExplanation
+          criteria_met: result.criteriaMet,
+          confidence_score: result.confidenceScore,
+          analysis_explanation: result.analysisExplanation
         }, { onConflict: 'match_id,prediction_type' })
         
         processedCount++

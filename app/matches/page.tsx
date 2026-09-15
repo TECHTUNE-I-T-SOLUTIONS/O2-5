@@ -37,9 +37,9 @@ export default function MatchesPage() {
   
   // Filters
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<string>('')
+  const [status, setStatus] = useState<string>('SCHEDULED')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-  const [todayOnly, setTodayOnly] = useState(true)
+  const [todayOnly, setTodayOnly] = useState(false)
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastMatchElementRef = useCallback((node: any) => {
@@ -59,7 +59,7 @@ export default function MatchesPage() {
 
     try {
       const params = new URLSearchParams({
-        limit: '20',
+        limit: '50',
         order: sortOrder,
         status: status,
         today: todayOnly.toString(),
@@ -133,11 +133,11 @@ export default function MatchesPage() {
 
           {/* Filter Bar */}
           <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
-            <FilterButton active={status === ''} onClick={() => setStatus('')} label="All Matches" />
             <FilterButton active={status === 'SCHEDULED'} onClick={() => setStatus('SCHEDULED')} label="Upcoming" />
             <FilterButton active={status === 'FINISHED'} onClick={() => setStatus('FINISHED')} label="Finished" />
             <FilterButton active={status === 'IN_PLAY'} onClick={() => setStatus('IN_PLAY')} label="Live" />
-            <FilterButton active={todayOnly} onClick={() => setTodayOnly(!todayOnly)} label="Today Only" />
+            <FilterButton active={status === ''} onClick={() => setStatus('')} label="All Status" />
+            <FilterButton active={todayOnly} onClick={() => setTodayOnly(!todayOnly)} label={todayOnly ? "Today Only ✓" : "Today Only"} />
           </div>
           
           {loading ? (

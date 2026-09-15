@@ -23,7 +23,11 @@ export default function SyncButton({ isSyncComplete = false }: SyncButtonProps) 
     setLoading(true)
     setStatus('idle')
     try {
-      const res = await fetch('/api/sync/football-data', { method: 'POST' })
+      const res = await fetch('/api/sync/multi-provider', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seasonYear: 2025, fullSync: false })
+      })
       const data = await res.json()
       
       if (data.success) {
@@ -52,17 +56,17 @@ export default function SyncButton({ isSyncComplete = false }: SyncButtonProps) 
         {loading ? (
           <>
             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            Running All Predictions...
+            Syncing Data & Predictions...
           </>
         ) : localSyncComplete ? (
           <>
             <CheckCircle2 className="mr-2 h-4 w-4" />
-            Already Generated
+            Already Synced Today
           </>
         ) : (
           <>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Run All Predictions
+            Sync Data & Predictions
           </>
         )}
       </Button>
