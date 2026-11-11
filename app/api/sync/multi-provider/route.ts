@@ -13,11 +13,11 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { seasonYear = 2025, fullSync = false } = body
+    const { seasonYear = 2025, days = 1 } = body
 
     console.log('--- STARTING MULTI-PROVIDER DATA SYNC ---')
     console.log(`Season: ${seasonYear}`)
-    console.log(`Full Sync: ${fullSync}`)
+    console.log(`Sync window: ${days} day(s)`)
 
     // Get data aggregator instance
     const aggregator = getDataAggregator({
@@ -28,9 +28,7 @@ export async function POST(request: Request) {
     })
 
     // Sync data from multiple providers
-    const aggregationResult = fullSync 
-      ? await aggregator.aggregateData(seasonYear, false) // Full sync for force mode
-      : await aggregator.aggregateData(seasonYear, true) // Today only for regular sync
+    const aggregationResult = await aggregator.aggregateData(seasonYear, days)
 
     if (!aggregationResult.success) {
       throw new Error('Data aggregation failed')

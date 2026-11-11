@@ -56,7 +56,7 @@ export class DataAggregator {
   /**
    * Main aggregation method - syncs all data from multiple providers
    */
-  async aggregateData(seasonYear: number = 2025, todayOnly: boolean = false): Promise<AggregationResult> {
+  async aggregateData(seasonYear: number = 2025, days: number = 1): Promise<AggregationResult> {
     const result: AggregationResult = {
       success: false,
       matchesSynced: 0,
@@ -73,7 +73,7 @@ export class DataAggregator {
 
     try {
       console.log('[DataAggregator] Starting data aggregation...')
-      console.log(`[DataAggregator] Today only mode: ${todayOnly}`)
+      console.log(`[DataAggregator] Sync window: ${days} day(s)`)
 
       // Step 1: Fetch competitions from primary source
       const competitions = await this.fetchCompetitions()
@@ -86,9 +86,18 @@ export class DataAggregator {
       console.log(`[DataAggregator] Processing ${tier1Competitions.length} Tier 1 competitions`)
 
       // Step 3: For each competition, sync matches, teams, and standings
+      const startTime = Date.now()
+      // Time budget to avoid serverless timeouts (default ~8s, leaves buffer)
+      const maxElapsedMs = 8000
       for (const competition of tier1Competitions) {
+        // Respect time budget: stop gracefully if approaching the limit
+        if (Date.now() - startTime > maxElapsedMs) {
+          console.warn(`[DataAggregator] Time budget reached, stopping after ${result.matchesSynced} matches synced`)
+          result.errors.push('Time budget reached; partial sync completed')
+          break
+        }
         try {
-          await this.syncCompetitionData(competition, seasonYear, result, todayOnly)
+          await this.syncCompetitionData(competition, seasonYear, result, days)
           // Add delay between competitions to respect rate limits
           await this.sleep(1000) // 1 second delay (reduced from 2s)
         } catch (error: any) {
@@ -98,12 +107,12 @@ export class DataAggregator {
         }
       }
 
-      // Step 4: Cross-check and enrich data if enabled (skip for today-only to save time)
-      if (this.config.enrichData && !todayOnly) {
+      // Step 4: Cross-check and enrich data if enabled (skip for short windows to save time)
+      if (this.config.enrichData && days > 1) {
         await this.enrichAndVerifyData(result)
-      } else if (todayOnly) {
-        console.log('[DataAggregator] Skipping cross-check for today-only mode to save time')
-        // Set default quality metrics for today-only mode
+      } else {
+        console.log(`[DataAggregator] Skipping cross-check for ${days}-day window to save time`)
+        // Set default quality metrics for short window
         result.dataQuality = {
           high: result.matchesSynced, // Assume high quality for fresh data
           medium: 0,
@@ -141,41 +150,41 @@ export class DataAggregator {
   /**
    * Sync data for a single competition
    */
-  private async syncCompetitionData(competition: any, seasonYear: number, result: AggregationResult, todayOnly: boolean = false) {
+  private async syncCompetitionData(competition: any, seasonYear: number, result: AggregationResult, days: number = 1) {
     console.log(`[DataAggregator] Syncing ${competition.name}...`)
 
     // Fetch matches
     const matches = await this.footballDataProvider.getCompetitionMatches(competition.id, seasonYear)
     console.log(`[DataAggregator] Fetched ${matches.length} matches for ${competition.name}`)
 
-    // Filter to today's matches if todayOnly is true
+    // Filter to matches within the sync window (today through today + days - 1)
     let matchesToSync = matches
-    if (todayOnly) {
+    if (days > 0) {
       const today = new Date()
       today.setUTCHours(0, 0, 0, 0)
-      const tomorrow = new Date(today)
-      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
-      
+      const endDate = new Date(today)
+      endDate.setUTCDate(today.getUTCDate() + days)
+
       matchesToSync = matches.filter((m: any) => {
         const matchDate = new Date(m.utcDate)
-        return matchDate >= today && matchDate < tomorrow
+        return matchDate >= today && matchDate < endDate
       })
-      console.log(`[DataAggregator] Filtered to ${matchesToSync.length} today's matches for ${competition.name}`)
-      
-      // If no matches found for today in this season, try next season
+      console.log(`[DataAggregator] Filtered to ${matchesToSync.length} matches in ${days}-day window for ${competition.name}`)
+
+      // If no matches found in window in this season, try next season
       if (matchesToSync.length === 0 && matches.length > 0) {
-        console.log(`[DataAggregator] No today's matches in season ${seasonYear}, trying next season`)
+        console.log(`[DataAggregator] No matches in window in season ${seasonYear}, trying next season`)
         const nextSeasonMatches = await this.footballDataProvider.getCompetitionMatches(competition.id, seasonYear + 1)
         console.log(`[DataAggregator] Fetched ${nextSeasonMatches.length} matches for ${competition.name} season ${seasonYear + 1}`)
-        
-        const nextSeasonTodayMatches = nextSeasonMatches.filter((m: any) => {
+
+        const nextSeasonWindowMatches = nextSeasonMatches.filter((m: any) => {
           const matchDate = new Date(m.utcDate)
-          return matchDate >= today && matchDate < tomorrow
+          return matchDate >= today && matchDate < endDate
         })
-        
-        if (nextSeasonTodayMatches.length > 0) {
-          matchesToSync = nextSeasonTodayMatches
-          console.log(`[DataAggregator] Found ${matchesToSync.length} today's matches in season ${seasonYear + 1}`)
+
+        if (nextSeasonWindowMatches.length > 0) {
+          matchesToSync = nextSeasonWindowMatches
+          console.log(`[DataAggregator] Found ${matchesToSync.length} matches in window in season ${seasonYear + 1}`)
         }
       }
     }
@@ -347,7 +356,7 @@ export class DataAggregator {
       }
 
       // If no data, do today-only sync
-      return await this.aggregateData(2025, true)
+      return await this.aggregateData(2025, 1)
     } catch (error: any) {
       console.error('[DataAggregator] Today\'s fixtures sync failed:', error)
       result.errors.push(error.message)

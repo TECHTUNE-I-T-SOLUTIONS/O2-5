@@ -26,7 +26,7 @@ export default function SyncButton({ isSyncComplete = false }: SyncButtonProps) 
       const res = await fetch('/api/sync/multi-provider', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seasonYear: 2025, fullSync: false })
+        body: JSON.stringify({ seasonYear: 2025, days: 1 })
       })
       const data = await res.json()
       

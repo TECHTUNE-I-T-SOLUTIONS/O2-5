@@ -15,6 +15,8 @@ export async function GET(request: Request) {
   const cursor = searchParams.get('cursor')
   const limit = parseInt(searchParams.get('limit') || '50')
   const todayOnly = searchParams.get('today') === 'true'
+  const fromDate = searchParams.get('from')
+  const toDate = searchParams.get('to')
 
   try {
     let query = supabase
@@ -32,8 +34,16 @@ export async function GET(request: Request) {
       today.setUTCHours(0, 0, 0, 0)
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
-      
+
       query = query.gte('utc_date', today.toISOString()).lt('utc_date', tomorrow.toISOString())
+    } else if (fromDate && toDate) {
+      // Custom date range
+      const from = new Date(fromDate)
+      from.setUTCHours(0, 0, 0, 0)
+      const to = new Date(toDate)
+      to.setUTCHours(23, 59, 59, 999)
+
+      query = query.gte('utc_date', from.toISOString()).lt('utc_date', to.toISOString())
     } else {
       // If not today only, filter for scheduled/upcoming matches from today onwards
       const today = new Date()

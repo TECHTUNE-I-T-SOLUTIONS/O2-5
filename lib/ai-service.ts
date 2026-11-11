@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 // Model chain with free Gemini models - try in order until one works
 // Updated with current valid Gemini models from Google AI
 // NOTE: Add models here when you want to enable AI explanations
-const MODEL_CHAIN: string[] = ['gemini-3.5-flash-lite', 'gemini-3.5-flash']
+const MODEL_CHAIN: string[] = ['gemini-3.1-flash-lite', 'gemini-3.6-flash', 'gemini-3.8-flash']
 
 interface AIAnalysisResult {
   explanation: string

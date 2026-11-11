@@ -29,8 +29,8 @@ export async function POST(request: Request) {
       enrichData: true
     })
 
-    // Run full aggregation regardless of existing data (today only mode for speed)
-    const aggregationResult = await aggregator.aggregateData(seasonYear, true)
+    // Run full aggregation regardless of existing data (1-day window for speed)
+    const aggregationResult = await aggregator.aggregateData(seasonYear, 1)
 
     if (!aggregationResult.success) {
       throw new Error('Data aggregation failed')
